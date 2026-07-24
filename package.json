@@ -2,6 +2,10 @@
   "name": "expense-requests",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=24.18.0",
+    "npm": ">=11.16.0"
+  },
   "workspaces": [
     "client",
     "server",
@@ -11,9 +15,9 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "// dev:server": "not wired up yet - added once /server is scaffolded",
-    "// dev:client": "not wired up yet - added once /client is scaffolded",
-    "// test": "not wired up yet - added once workspaces have test scripts"
+    "dev:server": "npm run dev --workspace=server",
+    "test": "npm test --workspaces --if-present",
+    "// dev:client": "not wired up yet - added once /client is scaffolded"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",

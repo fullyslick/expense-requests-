@@ -140,14 +140,14 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 
 ## Phase 0 — Scaffold
 
-- [ ] Root `package.json` with npm workspaces: `["client", "server", "shared"]`
+- [x] Root `package.json` with npm workspaces: `["client", "server", "shared"]`
 - [ ] Root scripts: `dev:server`, `dev:client`, `test`
-- [ ] `/server`: TypeScript, Express, `tsx` for dev, Jest + Supertest as dev deps
+- [x] `/server`: TypeScript, Express, `tsx` for dev, Jest + Supertest as dev deps
 - [ ] `/client`: Vite + React + TypeScript
 - [ ] `/shared`: `package.json` + `tsconfig.json`, no build step (both sides compile from source)
 - [x] Copy `users.json` and `requests.json` into `/server/data`
-- [ ] Verify both apps start and return a hello-world
-- [ ] Create `NOTES.md` with the run instructions **now**, while they're fresh
+- [] Verify both apps start and return a hello-world
+- [x] Create `NOTES.md` with the run instructions **now**, while they're fresh
 
 > **Simpler option if workspaces fight you:** drop the root package, install in `/client` and `/server` independently, and reference `/shared` through a tsconfig path alias in both. Note the choice in `NOTES.md`.
 
