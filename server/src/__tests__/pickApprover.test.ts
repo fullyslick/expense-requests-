@@ -1,5 +1,6 @@
 import type { User } from 'shared/types';
-import { NoEligibleApproverError, pickApprover } from '../logic/pickApprover';
+import { NoEligibleApproverError } from '../errors';
+import { pickApprover } from '../logic/pickApprover';
 
 // Mirrors server/data/users.json exactly, so these tests double as a check
 // against the real seed data, not just a synthetic fixture.

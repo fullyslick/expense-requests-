@@ -241,7 +241,7 @@ return candidate.id
 
 Build the error layer **first** — every service in Phases 6–8 depends on it existing.
 
-- [ ] `errors.ts`: a `DomainError` base plus `NotFoundError`, `ForbiddenError`, `InvalidTransitionError`, `ValidationError` (carries `fieldErrors`), `NoEligibleApproverError`. Each declares its own `status` and `code`.
+- [x] `errors.ts`: a `DomainError` base plus `NotFoundError`, `ForbiddenError`, `InvalidTransitionError`, `ValidationError` (carries `fieldErrors`), `NoEligibleApproverError`. Each declares its own `status` and `code`.
 - [ ] `middleware/errorHandler.ts`: single Express error handler. Known `DomainError` → its status and the contract below. Anything else → 500 with a generic message (never leak a stack).
 
 ```
