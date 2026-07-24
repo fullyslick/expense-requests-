@@ -161,7 +161,7 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 
 - [x] `shared/types.ts`: `User`, `RequestValues`, `HistoryEvent` (discriminated union on `type`), `ExpenseRequest`, `Status`
 - [x] `shared/money.ts`: `dollarsToCents(input: string): number`, `centsToDisplay(cents: number): string`
-- [ ] `shared/validation.ts`: Zod schema — base rules + `superRefine` for the three conditionals
+- [x] `shared/validation.ts`: Zod schema — base rules + `superRefine` for the three conditionals
 - [x] Export `EXPENSE_TYPES` and `CLIENTS` (`Acme`, `Globex`, `Initech`, `Contoso`) as shared constants
 
 **Rules to encode (from the requirements table):**
@@ -177,7 +177,7 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 | `otherReason` | required when `expenseType === 'Other'` |
 
 - [x] **Tests** — `money.ts`: `"12.50" → 1250`, `"0" → 0`, `"1000" → 100000`, round-trip, and a `.1 + .2` style float case
-- [ ] **Tests** — validation: each conditional fires when it should and clears when satisfied; negative amount rejected; `99999` needs no justification, `100000` does; empty description rejected
+- [x] **Tests** — validation: each conditional fires when it should and clears when satisfied; negative amount rejected; `99999` needs no justification, `100000` does; empty description rejected
 
 **Verify:** `npm test` green.
 **Commit:** `feat: shared types, money utils, and zod validation schema`

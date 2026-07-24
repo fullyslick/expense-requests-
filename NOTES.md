@@ -83,3 +83,12 @@ Per the plan (IMPLEMENTATION_PLAN.md Phase 2) and the ADR, the store is explicit
   That said, if you'd rather have permanent regression coverage on saveRequest (e.g. verifying an update actually overwrites the existing entry, not just appends), I can add a couple
   of assertions to store.test.ts — it's a judgment call the plan leaves open, not a hard rule. Want me to add it?     
 ```
+
+# Validation Schemas
+
+Used Zod for server-side validation. First time using it. I chose it because it produces field-level errors with paths, which map directly to inline form errors in the UI. 
+`superRefine` handles the three conditional rules (client when billable, justification when amount >= $1,000, other reason when type is "Other"). Two schemas: a loose one for draft saves and a strict one for submit.
+
+**`billable` — `.optional()` vs `.default(false)`.** The requirements table lists no explicit rule for the "Billable to a client?" checkbox, so I initially modeled it as `z.boolean().optional()` in the Zod schema. Claude flagged a mismatch: `RequestValues.billable` in `shared/types.ts` is a required `boolean`, but the parsed Zod output would be `boolean | undefined` when the field is omitted.
+
+I pointed out that the frontend checkbox will always send `billable` as `true` or `false` — never omitted — so in practice this gap only shows up for a hostile `curl` skipping the field entirely. Landed on `z.boolean().default(false)`: it stays non-required at the schema level (so a request without `billable` still parses instead of failing validation), but the *parsed* value is always a real `boolean`, matching `RequestValues` exactly and removing the type mismatch. Small thing, but a clean example of the client-can't-be-trusted principle applying even to a field with "no rule" — the server still needs a defined value to reason about, not just what the form happens to send.
