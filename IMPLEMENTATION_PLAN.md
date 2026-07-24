@@ -223,7 +223,7 @@ if (!candidate || candidate.id === requester.id) throw NoEligibleApprover
 
 return candidate.id
 ```
-- [ ] **Tests — all six branches:**
+- [x] **Tests — all six branches:**
   - under threshold → manager (Alice $450 → Carol)
   - at/over threshold → finance (Bob $1250 → Trent)
   - exactly `100000` → finance, not manager

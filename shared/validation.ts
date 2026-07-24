@@ -1,7 +1,6 @@
+import { THOUSAND_DOLLARS_IN_CENTS } from './constants';
 import { CLIENTS, EXPENSE_TYPES } from './types';
 import { z } from 'zod';
-
-const THOUSAND_DOLLARS_IN_CENTS = 100000;
 
 const baseRequestValuesSchema = z.object({
   expenseType: z.enum(EXPENSE_TYPES),

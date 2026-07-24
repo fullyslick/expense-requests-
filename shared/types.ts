@@ -1,7 +1,10 @@
+export const USER_ROLES = ['employee', 'manager', 'finance'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
+
 export type User = {
   id: string;
   name: string;
-  role: 'employee' | 'manager' | 'finance';
+  role: UserRole;
   managerId: string | null;
 };
 
