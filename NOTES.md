@@ -67,3 +67,19 @@ Field-by-field, the shapes do line up with the seed data:
 I decided to use Map instead of array for the in memory data. I might as well use just plain object but  a Map<string, ExpenseRequest> avoids prototype key collisions and provides a cleaner data-store API (.has(), .size, .delete()).
 I asked Claude to update ADR and Implementation plan to reflect that and then implement the seeding as well.
 Here we have the first deviation from the original plan. And its rather normal to polish the idea a bit during the implementation.
+
+I asked Claude to implement teh rest of teh Phase 2 - the methods that operate on the seeded data and to test the methods.
+Results were delivered as expected, but there is a unit test missing for saveRequest. I asked why and here is teh answer (after that I asked for the adding the test any way):
+
+```md
+Per the plan (IMPLEMENTATION_PLAN.md Phase 2) and the ADR, the store is explicitly scoped to one smoke test only, covering the seeding path — not the whole module. The ADR calls
+  this out directly:                                                                      
+                                                                                           
+  ▎ Do not build a test suite for the store. The ADR lists it as explicitly not worth testing — it's a wrapper over a Map.
+                                                                                                                                                                                      
+  saveRequest is a one-line map.set(request.id, request), and generateRequestId is a one-line counter increment — both fall under that same "not worth testing" umbrella; they don't  
+  contain any business rule that could silently break. That's also why I only smoke-tested them ad hoc in the terminal earlier rather than writing them into the suite.               
+                                                                                                                                                                                      
+  That said, if you'd rather have permanent regression coverage on saveRequest (e.g. verifying an update actually overwrites the existing entry, not just appends), I can add a couple
+  of assertions to store.test.ts — it's a judgment call the plan leaves open, not a hard rule. Want me to add it?     
+```

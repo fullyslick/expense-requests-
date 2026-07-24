@@ -187,14 +187,14 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 ## Phase 2 — Store and seeding
 
 - [x] `store.ts`: reads both JSON files at boot into module-level `Map<string, T>`s keyed by `id`
-- [ ] Expose `listRequests()`, `getRequestById(id)`, `saveRequest(req)`, `listUsers()`, `getUserById(id)`
+- [x] Expose `listRequests()`, `getRequestById(id)`, `saveRequest(req)`, `listUsers()`, `getUserById(id)`
   - `getRequestById`/`getUserById` → `map.get(id)`, O(1)
   - `saveRequest` → `map.set(request.id, request)`
   - `listRequests`/`listUsers` → `Array.from(map.values())`
-- [ ] ID generation for new requests (`REQ-005`, or a counter — keep it boring)
-- [ ] `/server/data/*.json` is read-only; nothing ever writes back to it
+- [x] ID generation for new requests (`REQ-005`, or a counter — keep it boring)
+- [x] `/server/data/*.json` is read-only; nothing ever writes back to it
 
-- [ ] **One smoke test only:** four seed requests load, six users load, shapes satisfy the shared types
+- [x] **One smoke test only:** four seed requests load, six users load, shapes satisfy the shared types
 
 > Do not build a test suite for the store. The ADR lists it as explicitly not worth testing — it's a wrapper over a `Map`.
 
