@@ -13,6 +13,11 @@ export default defineConfig([
     languageOptions: {
       ecmaVersion: 2020,
     },
+    rules: {
+      // Express error middleware must declare all 4 params (err, req, res, next)
+      // for Express to recognize it by arity, even when some go unused.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
   },
   {
     files: ['client/**/*.{ts,tsx}'],
