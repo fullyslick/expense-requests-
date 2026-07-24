@@ -88,7 +88,7 @@ Express route callbacks *are* controllers, so there is no separate controller la
 | `routes/` | URL wiring, `req` → args, response shape | any rule, any store call | Supertest (a few) |
 | `services/` | authorization, orchestration, appending events | `req` / `res` / status codes | plain Jest calls |
 | `logic/` | validation, routing, status derivation — **pure** | store, express, dates from `Date.now()` | plain Jest calls |
-| `store.ts` | the in-memory arrays | rules of any kind | one smoke test |
+| `store.ts` | the in-memory `Map`s (keyed by id) | rules of any kind | one smoke test |
 
 A handler stays this thin:
 
@@ -159,7 +159,7 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 
 ## Phase 1 — Shared contracts 
 
-- [ ] `shared/types.ts`: `User`, `RequestValues`, `HistoryEvent` (discriminated union on `type`), `ExpenseRequest`, `Status`
+- [x] `shared/types.ts`: `User`, `RequestValues`, `HistoryEvent` (discriminated union on `type`), `ExpenseRequest`, `Status`
 - [ ] `shared/money.ts`: `dollarsToCents(input: string): number`, `centsToDisplay(cents: number): string`
 - [ ] `shared/validation.ts`: Zod schema — base rules + `superRefine` for the three conditionals
 - [ ] Export `EXPENSE_TYPES` and `CLIENTS` (`Acme`, `Globex`, `Initech`, `Contoso`) as shared constants
@@ -186,14 +186,17 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 
 ## Phase 2 — Store and seeding
 
-- [ ] `store.ts`: reads both JSON files at boot into module-level arrays
+- [x] `store.ts`: reads both JSON files at boot into module-level `Map<string, T>`s keyed by `id`
 - [ ] Expose `listRequests()`, `getRequestById(id)`, `saveRequest(req)`, `listUsers()`, `getUserById(id)`
+  - `getRequestById`/`getUserById` → `map.get(id)`, O(1)
+  - `saveRequest` → `map.set(request.id, request)`
+  - `listRequests`/`listUsers` → `Array.from(map.values())`
 - [ ] ID generation for new requests (`REQ-005`, or a counter — keep it boring)
 - [ ] `/server/data/*.json` is read-only; nothing ever writes back to it
 
 - [ ] **One smoke test only:** four seed requests load, six users load, shapes satisfy the shared types
 
-> Do not build a test suite for the store. The ADR lists it as explicitly not worth testing — it's a wrapper over an array.
+> Do not build a test suite for the store. The ADR lists it as explicitly not worth testing — it's a wrapper over a `Map`.
 
 **Verify:** smoke test green.
 **Commit:** `feat: in-memory store with seed loading`

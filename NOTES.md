@@ -63,3 +63,7 @@ Field-by-field, the shapes do line up with the seed data:
   seed-data/JSON-import friction you'd hit is a separate, expected concern that belongs to Phase 2, not a defect in Phase 1's types. 
 ```
 
+# Seeding The Data
+I decided to use Map instead of array for the in memory data. I might as well use just plain object but  a Map<string, ExpenseRequest> avoids prototype key collisions and provides a cleaner data-store API (.has(), .size, .delete()).
+I asked Claude to update ADR and Implementation plan to reflect that and then implement the seeding as well.
+Here we have the first deviation from the original plan. And its rather normal to polish the idea a bit during the implementation.

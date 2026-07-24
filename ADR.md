@@ -17,7 +17,7 @@ Everything else (auth, persistence, styling, deployment) is explicitly allowed t
 | Constraint | Implication |
 |---|---|
 | 3–4 hours total | No DB, no auth, no infra. Cut anything that isn't rules/workflow/API. |
-| In-memory storage is fine | Single Node process, seed JSON loaded at boot, mutations live in a module-level array. |
+| In-memory storage is fine | Single Node process, seed JSON loaded at boot, mutations live in a module-level `Map` keyed by id. |
 | No form builder / workflow engine | Conditional rules and the state machine are hand-written. |
 | Data-grid library discouraged | Plain `<table>`. |
 | Seed data shape is given | Design the model *around* `requests.json` so there's no import/migration step. |
@@ -47,7 +47,7 @@ All choices are drawn from the declared stack.
 |---|---|---|---|
 | Language | TypeScript everywhere | Shared types between client/server prevent contract drift; discriminated unions model the event log well | — |
 | Backend framework | Express | Smallest thing that does routing + middleware; fake-auth middleware is ~8 lines | Next.js API routes — couples the API's lifecycle to the frontend and makes "call the API directly" less obvious to demo |
-| Storage | In-memory array behind a `store` module, seeded from JSON at boot | Explicitly permitted; zero setup cost; the module is a swappable seam if a DB were ever needed | MySQL/MongoDB — pure overhead here. File-backed JSON — see §4 |
+| Storage | In-memory `Map` (keyed by id) behind a `store` module, seeded from JSON at boot | Explicitly permitted; zero setup cost; `get`/`save` are O(1) by id instead of an array scan; the module is a swappable seam if a DB were ever needed | MySQL/MongoDB — pure overhead here. File-backed JSON — see §4 |
 | Frontend | Vite + React + TS | Fast dev loop, no framework opinions to fight | Next.js — SSR buys nothing for an internal tool behind a user picker |
 | Routing | React Router, **Declarative mode** | Three routes; keeps Express as the only server in the repo (see §8) | Framework mode — runs its own server, competing with the one being graded |
 | Client state | Context API (current user) + local component state | The only genuinely global state is "who am I pretending to be" (see §8) | Redux Toolkit / Zustand — no shared mutable client state to justify them |
@@ -69,7 +69,9 @@ All choices are drawn from the declared stack.
 
 ### The store
 
-Everything sits behind a small `store` module exposing `list`, `getById`, and `save`. Seeding is exactly what it looks like: `JSON.parse(readFileSync('data/requests.json'))` at boot into a module-level array; every mutation mutates that array; a restart resets to the four seed records.
+Everything sits behind a small `store` module exposing `list`, `getById`, and `save`. Seeding is exactly what it looks like: `JSON.parse(readFileSync('data/requests.json'))` at boot, loaded into a module-level `Map<string, ExpenseRequest>` keyed by `id` (same pattern for users, keyed by `id`). `getById` is a direct `map.get(id)` — no scanning. `save` is `map.set(request.id, request)`. `list` returns `Array.from(map.values())`. A restart resets to the four seed records.
+
+**Why a `Map` over an array:** the store's whole job is id-keyed lookups (`getRequestById`, `getUserById`) plus occasional full listing. A `Map` makes the lookup path O(1) and explicit instead of an implicit `array.find(r => r.id === id)` repeated at every call site. `list()` still needs to iterate everything, so `Array.from(map.values())` covers it — the array-shaped API callers see doesn't change, only the internal representation.
 
 **File-backed JSON was considered and rejected.** Writing state back to disk only helps on a long-lived host, and all it buys is "survives restart." It also costs real code — you'd need to write to a gitignored copy so the pristine seed survives, and use write-temp-then-rename to avoid corrupting the file on overlapping writes. For a 3–4 hour exercise where in-memory is explicitly blessed, stay in memory and spend one line of `NOTES.md` instead:
 
@@ -186,7 +188,7 @@ flowchart TD
         V["validate()<br/>Zod schema"]
         RT["pickApprover()<br/>routing rules"]
         ST["deriveStatus()<br/>event reducer"]
-        S[(store module<br/>in-memory, seeded from JSON)]
+        S[(store module<br/>in-memory Map, seeded from JSON)]
     end
 
     UP -.-> API

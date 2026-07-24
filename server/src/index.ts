@@ -1,4 +1,5 @@
 import express from 'express';
+import './store';
 
 const app = express();
 
