@@ -128,3 +128,9 @@ Continued Phase 4 with `guards.ts` — `assertOwner`, `assertStatus`, `assertAss
 Then `serialize.ts` — `toResponse(request)` attaching `status` and `approverId` as computed fields, the one function that's allowed to do so per the plan's "only place derived fields get attached" rule. Kept it to exactly what Phase 4 asked for; the ADR's endpoint table mentions "requester name" alongside status for `GET /api/requests`, but that's Phase 11's job on the client, resolved against the separately-fetched users list, not something `toResponse` needs to carry.
 
 Wire `index.ts`: `express.json()` and `cors()` mounted early, `errorHandler` mounted last so any thrown error — a `DomainError` or otherwise — funnels through the one error contract. CORS is wide open (`*`), which is fine here since CORS is a browser-only mechanism; it has no bearing on requirement 5's "enforce it even for a direct curl" guarantee, which is what `guards.ts` and `validation.ts` actually hold.
+
+# Auth Middleware
+
+Before `auth.ts`, I asked whether the plan bundling "apply auth to `/api/*`" and `routes/users.ts` into Phase 4 alongside the middleware still made sense, since routes felt like Phase 5+ territory. Claude's answer: it's one vertical slice, not scope creep — `GET /api/users` is deliberately the simplest possible route precisely so it can prove the auth+routing wiring works end-to-end (it's literally what the plan's own Verify step curls) before Phase 5 builds the busier request endpoints on top of the same mounted router.
+
+That surfaced a real gap along the way: the ADR's error contract table only has 400/403/404/409, but the plan's own auth test wants 401s, and none of the five `DomainError` subclasses covered it. Asked how to handle it — consolidated on adding `UnauthorizedError` (401/`UNAUTHORIZED`) to `errors.ts` rather than having `auth.ts` build its own response inline, keeping every error on the same single-handler path.

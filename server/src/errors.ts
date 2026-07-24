@@ -1,7 +1,9 @@
-// The single source of truth for the API's error contract (ADR §6):
+// The single source of truth for the API's error contract (ADR §6, extended
+// with 401 for auth — the ADR's table predates middleware/auth.ts):
 //
 //   400  { error: 'VALIDATION_FAILED',    fieldErrors: {...} }
 //   400  { error: 'NO_ELIGIBLE_APPROVER', message: '...' }
+//   401  { error: 'UNAUTHORIZED',         message: '...' }
 //   403  { error: 'FORBIDDEN',            message: '...' }
 //   404  { error: 'NOT_FOUND',            message: '...' }
 //   409  { error: 'INVALID_TRANSITION',   message: '...' }
@@ -24,6 +26,11 @@ export abstract class DomainError extends Error {
 export class NotFoundError extends DomainError {
   readonly status = 404;
   readonly code = 'NOT_FOUND';
+}
+
+export class UnauthorizedError extends DomainError {
+  readonly status = 401;
+  readonly code = 'UNAUTHORIZED';
 }
 
 export class ForbiddenError extends DomainError {

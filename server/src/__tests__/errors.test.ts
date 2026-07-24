@@ -3,6 +3,7 @@ import {
   InvalidTransitionError,
   NoEligibleApproverError,
   NotFoundError,
+  UnauthorizedError,
   ValidationError,
 } from '../errors';
 
@@ -15,6 +16,12 @@ describe('domain errors', () => {
     expect(error.status).toBe(404);
     expect(error.code).toBe('NOT_FOUND');
     expect(error).toBeInstanceOf(Error);
+  });
+
+  it('UnauthorizedError is a 401 UNAUTHORIZED', () => {
+    const error = new UnauthorizedError('Missing or unknown X-User-Id');
+    expect(error.status).toBe(401);
+    expect(error.code).toBe('UNAUTHORIZED');
   });
 
   it('ForbiddenError is a 403 FORBIDDEN', () => {
@@ -47,6 +54,7 @@ describe('domain errors', () => {
   it('each error class carries its own status/code (a switch is never needed)', () => {
     const errors = [
       new NotFoundError('x'),
+      new UnauthorizedError('x'),
       new ForbiddenError('x'),
       new InvalidTransitionError('x'),
       new ValidationError({}),

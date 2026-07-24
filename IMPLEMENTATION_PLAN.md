@@ -255,7 +255,7 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 - [x] `services/guards.ts`: `assertOwner(actor, request)`, `assertStatus(request, expected)`, `assertAssignedApprover(actor, request)` — each throws the matching typed error
 - [x] `services/serialize.ts`: `toResponse(request)` attaching derived `status` and `approverId`
 - [x] `index.ts`: Express app, JSON body parser, `cors`, fixed port, error handler mounted **last**
-- [ ] `middleware/auth.ts`: read `X-User-Id`, resolve via `store.getUserById`, attach `req.currentUser`, else 401
+- [x] `middleware/auth.ts`: read `X-User-Id`, resolve via `store.getUserById`, attach `req.currentUser`, else 401
 - [ ] Apply auth to all `/api/*` routes
 - [ ] `routes/users.ts`: `GET /api/users`
 
