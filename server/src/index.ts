@@ -3,6 +3,7 @@ import express from 'express';
 import './store';
 import { auth } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
+import requestsRouter from './routes/requests';
 import usersRouter from './routes/users';
 
 const app = express();
@@ -16,6 +17,7 @@ app.get('/', (_req, res) => {
 
 app.use('/api', auth);
 app.use('/api/users', usersRouter);
+app.use('/api/requests', requestsRouter);
 
 app.use(errorHandler);
 

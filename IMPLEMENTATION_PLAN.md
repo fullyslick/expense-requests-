@@ -273,11 +273,11 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 ## Phase 5 — Request read endpoints
 
 - [x] `requests.service.ts`: `listRequests()` and `getRequest(id)` — the latter throws `NotFoundError` rather than returning `undefined`
-- [ ] `routes/requests.ts`: `GET /api/requests` and `GET /api/requests/:id`, both one line through `toResponse`
-- [ ] `toResponse` is the **only** place derived fields get attached, so the response shape can't drift between endpoints
+- [x] `routes/requests.ts`: `GET /api/requests` and `GET /api/requests/:id`, both one line through `toResponse`
+- [x] `toResponse` is the **only** place derived fields get attached, so the response shape can't drift between endpoints
 
-- [ ] **Test (service):** `getRequest('nope')` throws `NotFoundError`
-- [ ] **Test:** list returns 4 seed records; REQ-001 is `Draft`, REQ-002 is `Submitted` with approver `u_carol`, REQ-003 is `Approved`
+- [x] **Test (service):** `getRequest('nope')` throws `NotFoundError`
+- [x] **Test:** list returns 4 seed records; REQ-001 is `Draft`, REQ-002 is `Submitted` with approver `u_carol`, REQ-003 is `Approved`
 
 **Verify:** derived statuses match the seed data's event history.
 **Commit:** `feat: request list and detail endpoints`

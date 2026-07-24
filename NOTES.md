@@ -140,3 +140,5 @@ Closed out Phase 4: `routes/users.ts` (`GET /api/users`) and `auth` mounted on a
 # Request Read Endpoints
 
 Started Phase 5 with just `requests.service.ts`: `listRequests()` and `getRequest(id)`, the latter throwing `NotFoundError` instead of returning `undefined`. Kept both returning the raw `ExpenseRequest` shape — no derived `status`/`approverId` here, since `toResponse` stays the only place those get attached, per the plan's own rule about the response shape not drifting between endpoints. `routes/requests.ts` is next.
+
+Closed out Phase 5 with `routes/requests.ts` — `GET /api/requests` and `GET /api/requests/:id`, both one line through `toResponse`, mounted on `/api/requests` in `index.ts` behind the same auth middleware. Verified against the plan's exact assertions live and in tests: REQ-001 comes back `Draft`, REQ-002 `Submitted` with approver `u_carol`, REQ-003 `Approved`, and an unknown id 404s with `NOT_FOUND`.
