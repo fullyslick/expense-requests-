@@ -1,0 +1,29 @@
+{
+  "plugins": ["@trivago/prettier-plugin-sort-imports"],
+  "singleQuote": true,
+  "trailingComma": "all",
+  "tabWidth": 2,
+  "semi": true,
+  "arrowParens": "always",
+  "jsxSingleQuote": false,
+  "printWidth": 100,
+  "bracketSpacing": true,
+  "endOfLine": "auto",
+  "useTabs": false,
+  "importOrder": [
+    "^react$",
+    "^react(-.*)?$",
+    "^(lodash|exceljs|file-saver-es)$",
+    "<THIRD_PARTY_MODULES>",
+    "^.*\\/hooks(\\/.*)?$",
+    "^.*\\/redux(\\/.*)?$",
+    "^.*\\/stores(\\/.*)?$",
+    "^.*\\/components(\\/.*)?$",
+    "^.*\\/utils(\\/.*)?$",
+    "^.*\\/variables(\\/.*)?$",
+    ".*\\.(avif|png|jpg|jpeg|gif|svg)$",
+    ".*\\.(s?css)$"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
+}
