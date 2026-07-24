@@ -160,9 +160,9 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 ## Phase 1 — Shared contracts 
 
 - [x] `shared/types.ts`: `User`, `RequestValues`, `HistoryEvent` (discriminated union on `type`), `ExpenseRequest`, `Status`
-- [ ] `shared/money.ts`: `dollarsToCents(input: string): number`, `centsToDisplay(cents: number): string`
+- [x] `shared/money.ts`: `dollarsToCents(input: string): number`, `centsToDisplay(cents: number): string`
 - [ ] `shared/validation.ts`: Zod schema — base rules + `superRefine` for the three conditionals
-- [ ] Export `EXPENSE_TYPES` and `CLIENTS` (`Acme`, `Globex`, `Initech`, `Contoso`) as shared constants
+- [x] Export `EXPENSE_TYPES` and `CLIENTS` (`Acme`, `Globex`, `Initech`, `Contoso`) as shared constants
 
 **Rules to encode (from the requirements table):**
 
@@ -176,7 +176,7 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 | `additionalJustification` | required when `amountCents >= 100000` |
 | `otherReason` | required when `expenseType === 'Other'` |
 
-- [ ] **Tests** — `money.ts`: `"12.50" → 1250`, `"0" → 0`, `"1000" → 100000`, round-trip, and a `.1 + .2` style float case
+- [x] **Tests** — `money.ts`: `"12.50" → 1250`, `"0" → 0`, `"1000" → 100000`, round-trip, and a `.1 + .2` style float case
 - [ ] **Tests** — validation: each conditional fires when it should and clears when satisfied; negative amount rejected; `99999` needs no justification, `100000` does; empty description rejected
 
 **Verify:** `npm test` green.
