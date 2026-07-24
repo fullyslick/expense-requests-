@@ -35,3 +35,31 @@ Verified: npm install, npm test (1 passing), and npm run dev:server (curl'd loca
 One thing to note for later: the current eslint.config.js only sets globals.browser and pulls in React-specific plugins, so it's not really linting server/src correctly yet (no    
 Node globals). Worth adding a server/** override with globals.node and no React plugins when you're ready — didn't do it now since it wasn't asked for.
 ```
+
+# Defining Core Data Types
+I have defined the types manually with few small refinements from Claude and at the end I asked it to verify them against the ADR and Implementation plan.
+
+**Prompt to Output Example**
+
+**Check the @ADR.md and @IMPLEMENTATION_PLAN.md step: [ ] `shared/types.ts`: `User`, `RequestValues`, `HistoryEvent` (discriminated union on `type`), `ExpenseRequest`, `Status`      
+check if types for the seeded data is properly implemented.**
+
+```md
+Field-by-field, the shapes do line up with the seed data:                                                                                                                           
+  - User ↔ users.json — id, name, role, managerId all match.                                                                                                                          
+  - ExpenseRequest ↔ requests.json — id, requesterId, values, events all match.                                                                                                       
+  - RequestValues — optional fields (client, additionalJustification, otherReason) are only present where the seed data has them (REQ-003 has additionalJustification, REQ-004 has    
+  client), consistent with ?.                                                                                                                                                         
+  - HistoryEvent discriminated union — submitted events in the seed carry approverId; created/approved/rejected don't. Matches the union exactly.                                     
+                                                                                                                                                                                      
+  What this means for Phase 2 (store.ts): when the store loads these JSON files at boot, it can't just assign them directly to User[] / ExpenseRequest[] — that assignment will only  
+  "work" via an unchecked cast (as User[]), same as I had to do in the throwaway file to get it to compile. That's normal and expected for a seed-loader — the file layout in the plan
+  already puts this concern in store.ts, not types.ts. Two options when you get there:                                                                                                
+  1. Trust the seed data and cast: JSON.parse(...) as User[].                                                                                                                         
+  2. Parse through the Zod schema (validation.ts, Phase 1) at boot for real runtime narrowing — more correct but arguably more than the "one smoke test" scope calls for at this      
+  stage.                                                                                                                                                                              
+                                                                                                                                                                                      
+  So: the checkbox item itself — User, RequestValues, HistoryEvent (discriminated union), ExpenseRequest, Status — is correctly implemented in shared/types.ts. The                   
+  seed-data/JSON-import friction you'd hit is a separate, expected concern that belongs to Phase 2, not a defect in Phase 1's types. 
+```
+
