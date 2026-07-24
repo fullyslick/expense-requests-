@@ -247,20 +247,23 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 ```
 400  { error: 'VALIDATION_FAILED',    fieldErrors: {...} }
 400  { error: 'NO_ELIGIBLE_APPROVER', message: '...' }
+401  { error: 'UNAUTHORIZED',         message: '...' }
 403  { error: 'FORBIDDEN',            message: '...' }
 404  { error: 'NOT_FOUND',            message: '...' }
 409  { error: 'INVALID_TRANSITION',   message: '...' }
 ```
 
+> Extended with 401 during implementation — the original table (and ADR §6) predates `middleware/auth.ts` and didn't have an entry for missing/unknown `X-User-Id`. See NOTES.md.
+
 - [x] `services/guards.ts`: `assertOwner(actor, request)`, `assertStatus(request, expected)`, `assertAssignedApprover(actor, request)` — each throws the matching typed error
 - [x] `services/serialize.ts`: `toResponse(request)` attaching derived `status` and `approverId`
 - [x] `index.ts`: Express app, JSON body parser, `cors`, fixed port, error handler mounted **last**
 - [x] `middleware/auth.ts`: read `X-User-Id`, resolve via `store.getUserById`, attach `req.currentUser`, else 401
-- [ ] Apply auth to all `/api/*` routes
-- [ ] `routes/users.ts`: `GET /api/users`
+- [x] Apply auth to all `/api/*` routes
+- [x] `routes/users.ts`: `GET /api/users`
 
-- [ ] **Tests — guards, called directly, no HTTP:** `assertOwner` throws `ForbiddenError` for a non-owner and passes for the owner; `assertStatus` throws `InvalidTransitionError` on a mismatch
-- [ ] **Test:** missing `X-User-Id` → 401; unknown id → 401; valid id → 200
+- [x] **Tests — guards, called directly, no HTTP:** `assertOwner` throws `ForbiddenError` for a non-owner and passes for the owner; `assertStatus` throws `InvalidTransitionError` on a mismatch
+- [x] **Test:** missing `X-User-Id` → 401; unknown id → 401; valid id → 200
 
 **Verify:** `curl -H 'X-User-Id: u_alice' localhost:PORT/api/users` returns six users; a route that throws `new ForbiddenError('x')` produces a 403 in the contract shape.
 **Commit:** `feat: express shell, typed domain errors, auth middleware, users endpoint`
