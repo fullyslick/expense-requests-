@@ -208,9 +208,9 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 Write these **before any route exists**. They have no Express dependency and no `req`/`res` in sight.
 
 ### `deriveStatus(events): Status`
-- [ ] Maps last event type → `Draft` / `Submitted` / `Approved` / `Rejected`
-- [ ] Companion `getApproverId(events)` — reads the most recent `submitted` event
-- [ ] **Tests:** each event type; multiple events in order; a submitted-then-rejected sequence; empty array
+- [x] Maps last event type → `Draft` / `Submitted` / `Approved` / `Rejected`
+- [x] Companion `getApproverId(events)` — reads the most recent `submitted` event
+- [x] **Tests:** each event type; multiple events in order; a submitted-then-rejected sequence; empty array
 
 ### `pickApprover(requester, amountCents, users): string`
 ```

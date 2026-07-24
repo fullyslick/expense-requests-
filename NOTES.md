@@ -92,3 +92,11 @@ Used Zod for server-side validation. First time using it. I chose it because it 
 **`billable` — `.optional()` vs `.default(false)`.** The requirements table lists no explicit rule for the "Billable to a client?" checkbox, so I initially modeled it as `z.boolean().optional()` in the Zod schema. Claude flagged a mismatch: `RequestValues.billable` in `shared/types.ts` is a required `boolean`, but the parsed Zod output would be `boolean | undefined` when the field is omitted.
 
 I pointed out that the frontend checkbox will always send `billable` as `true` or `false` — never omitted — so in practice this gap only shows up for a hostile `curl` skipping the field entirely. Landed on `z.boolean().default(false)`: it stays non-required at the schema level (so a request without `billable` still parses instead of failing validation), but the *parsed* value is always a real `boolean`, matching `RequestValues` exactly and removing the type mismatch. Small thing, but a clean example of the client-can't-be-trusted principle applying even to a field with "no rule" — the server still needs a defined value to reason about, not just what the form happens to send.
+
+# Data Model & Derived Status
+
+No `status` field anywhere in storage — `store` only holds `{ id, requesterId, values, events }`. Status is a pure reducer, `deriveStatus(events)`, that reads the last event's `type` and maps it to `Draft` / `Submitted` / `Approved` / `Rejected`; a companion `getApproverId(events)` walks the history backward for the most recent `submitted` event. Both are computed on read and attached to the API response, never written.
+
+The point of doing it this way: requirement 6 says status must always match the latest action, and a stored field means remembering to update it in four different handlers — forget one and you get a silent bug. Deriving it makes that requirement true by construction instead of by discipline. Tested each event type, an ordered multi-event sequence, a submitted-then-rejected sequence, and the empty-array edge case; verified against the seed data too (REQ-002 comes back `Submitted` with approver `u_carol`, matching the ADR by hand).
+
+I asked Claude to add more detailed comments to `deriveStatus.ts` file as it essential for the app functionality,
