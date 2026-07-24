@@ -272,7 +272,7 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 
 ## Phase 5 — Request read endpoints
 
-- [ ] `requests.service.ts`: `listRequests()` and `getRequest(id)` — the latter throws `NotFoundError` rather than returning `undefined`
+- [x] `requests.service.ts`: `listRequests()` and `getRequest(id)` — the latter throws `NotFoundError` rather than returning `undefined`
 - [ ] `routes/requests.ts`: `GET /api/requests` and `GET /api/requests/:id`, both one line through `toResponse`
 - [ ] `toResponse` is the **only** place derived fields get attached, so the response shape can't drift between endpoints
 

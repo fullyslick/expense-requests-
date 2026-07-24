@@ -136,3 +136,7 @@ Before `auth.ts`, I asked whether the plan bundling "apply auth to `/api/*`" and
 That surfaced a real gap along the way: the ADR's error contract table only has 400/403/404/409, but the plan's own auth test wants 401s, and none of the five `DomainError` subclasses covered it. Asked how to handle it — consolidated on adding `UnauthorizedError` (401/`UNAUTHORIZED`) to `errors.ts` rather than having `auth.ts` build its own response inline, keeping every error on the same single-handler path.
 
 Closed out Phase 4: `routes/users.ts` (`GET /api/users`) and `auth` mounted on all of `/api/*` in `index.ts`, so later routers inherit it for free. Verified live against the plan's own curl example — 6 users for a valid `X-User-Id`, 401 otherwise.
+
+# Request Read Endpoints
+
+Started Phase 5 with just `requests.service.ts`: `listRequests()` and `getRequest(id)`, the latter throwing `NotFoundError` instead of returning `undefined`. Kept both returning the raw `ExpenseRequest` shape — no derived `status`/`approverId` here, since `toResponse` stays the only place those get attached, per the plan's own rule about the response shape not drifting between endpoints. `routes/requests.ts` is next.
