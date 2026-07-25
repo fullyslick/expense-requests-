@@ -1,6 +1,46 @@
-import type { ExpenseRequest } from 'shared/types';
 import { NotFoundError } from '../errors';
 import * as store from '../store';
+import type { ExpenseRequest, RequestValues } from 'shared/types';
+
+// Record (not a plain array) so TS enforces every RequestValues key is
+// listed here — add a field to RequestValues and this won't compile until
+// it's added here too, keeping the allowlist in sync with the type by
+// construction rather than by remembering to update two places.
+const VALUES_KEYS: Record<keyof RequestValues, true> = {
+  expenseType: true,
+  amountCents: true,
+  description: true,
+  billable: true,
+  client: true,
+  additionalJustification: true,
+  otherReason: true,
+};
+
+// The mass-assignment guard: the client must never be able to
+// set `status`, `requesterId`, or `approverId`. A body like
+// `{ requesterId: 'u_carol', status: 'Approved' }` could otherwise steal
+// ownership of a request or skip the approval workflow entirely — this is
+// exactly what `Object.assign(request.values, req.body)` would let happen.
+// pickValues only ever copies the seven known RequestValues keys out of the
+// body, one by one, so anything else is silently never read. createDraft and
+// updateDraft (below) are meant to be the only callers of this function —
+// nothing else should ever read req.body directly.
+export function pickValues(body: unknown): Partial<RequestValues> {
+  if (typeof body !== 'object' || body === null) {
+    return {};
+  }
+
+  const source = body as Record<string, unknown>;
+  const result: Partial<Record<keyof RequestValues, unknown>> = {};
+
+  for (const key of Object.keys(VALUES_KEYS) as (keyof RequestValues)[]) {
+    if (key in source) {
+      result[key] = source[key];
+    }
+  }
+
+  return result as Partial<RequestValues>;
+}
 
 export function listRequests(): ExpenseRequest[] {
   return store.listRequests();

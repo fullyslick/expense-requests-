@@ -142,3 +142,11 @@ Closed out Phase 4: `routes/users.ts` (`GET /api/users`) and `auth` mounted on a
 Started Phase 5 with just `requests.service.ts`: `listRequests()` and `getRequest(id)`, the latter throwing `NotFoundError` instead of returning `undefined`. Kept both returning the raw `ExpenseRequest` shape — no derived `status`/`approverId` here, since `toResponse` stays the only place those get attached, per the plan's own rule about the response shape not drifting between endpoints. `routes/requests.ts` is next.
 
 Closed out Phase 5 with `routes/requests.ts` — `GET /api/requests` and `GET /api/requests/:id`, both one line through `toResponse`, mounted on `/api/requests` in `index.ts` behind the same auth middleware. Verified against the plan's exact assertions live and in tests: REQ-001 comes back `Draft`, REQ-002 `Submitted` with approver `u_carol`, REQ-003 `Approved`, and an unknown id 404s with `NOT_FOUND`.
+
+# Create & Update Draft
+
+Started Phase 6 with `pickValues(body)`, the mass-assignment allowlist (guardrail #4) — only the seven known `RequestValues` keys ever get copied out of a request body, so a client stuffing in `status`/`requesterId`/`approverId` just gets silently ignored. The allowlist itself is a `Record<keyof RequestValues, true>` rather than a plain array, same reasoning as `USER_ROLES`/`THOUSAND_DOLLARS_IN_CENTS` earlier — if a field is ever added to `RequestValues`, this won't compile until it's added here too.
+
+I asked Claude to explain the purpose in plain terms first, then to turn that into a detailed comment on the function itself, since it's a security-relevant piece worth being explicit about in the code, not just in `NOTES.md`.
+
+Then I questioned whether `pickValues` was really a "guard" and belonged in `guards.ts` next to `assertOwner`/`assertStatus`/`assertAssignedApprover` instead of `requests.service.ts`. Claude's answer: no — the guards all share one contract (`assert*(...) => void`, throw a `DomainError` or pass silently), while `pickValues` never throws, it transforms input into output. It's also tightly coupled to `RequestValues` specifically and only ever called by `createDraft`/`updateDraft`, both in this same file, versus the guards being reusable across every service function regardless of what `RequestValues` looks like. Kept it where it is.

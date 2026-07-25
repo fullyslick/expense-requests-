@@ -286,7 +286,7 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 
 ## Phase 6 — Create and update drafts
 
-- [ ] `pickValues(body)` helper — the **allowlist**. Returns only the seven known `values` keys. Every write path goes through it; nothing else ever reads `req.body`.
+- [x] `pickValues(body)` helper — the **allowlist**. Returns only the seven known `values` keys. Every write path goes through it; nothing else ever reads `req.body`.
 - [ ] `createDraft(actor, body)` in the service
   - `requesterId` = `actor.id` (**never from body**)
   - appends `{ type: 'created', at: now, actorId: actor.id }`
