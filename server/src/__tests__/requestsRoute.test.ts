@@ -131,3 +131,103 @@ describe('PATCH /api/requests/:id', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('POST /api/requests/:id/submit', () => {
+  it('submits a valid draft and returns it Submitted with an approver', async () => {
+    const created = await request(app)
+      .post('/api/requests')
+      .set('X-User-Id', 'u_alice')
+      .send({
+        expenseType: 'Travel',
+        amountCents: 5000,
+        description: 'Taxi',
+        billable: false,
+      });
+
+    const res = await request(app)
+      .post(`/api/requests/${created.body.id}/submit`)
+      .set('X-User-Id', 'u_alice')
+      .send();
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('Submitted');
+    expect(res.body.approverId).toBe('u_carol');
+  });
+
+  it('returns 400 VALIDATION_FAILED with fieldErrors when billable has no client', async () => {
+    const created = await request(app)
+      .post('/api/requests')
+      .set('X-User-Id', 'u_alice')
+      .send({
+        expenseType: 'Travel',
+        amountCents: 5000,
+        description: 'Taxi',
+        billable: true,
+      });
+
+    const res = await request(app)
+      .post(`/api/requests/${created.body.id}/submit`)
+      .set('X-User-Id', 'u_alice')
+      .send();
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('VALIDATION_FAILED');
+    expect(res.body.fieldErrors.client).toBeDefined();
+  });
+
+  it('returns 403 when submitting someone else\'s draft', async () => {
+    const created = await request(app)
+      .post('/api/requests')
+      .set('X-User-Id', 'u_alice')
+      .send({
+        expenseType: 'Travel',
+        amountCents: 5000,
+        description: 'Taxi',
+        billable: false,
+      });
+
+    const res = await request(app)
+      .post(`/api/requests/${created.body.id}/submit`)
+      .set('X-User-Id', 'u_bob')
+      .send();
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('FORBIDDEN');
+  });
+
+  it('returns 409 when submitting an already-Submitted request', async () => {
+    const res = await request(app)
+      .post('/api/requests/REQ-002/submit')
+      .set('X-User-Id', 'u_alice')
+      .send();
+
+    expect(res.status).toBe(409);
+    expect(res.body.error).toBe('INVALID_TRANSITION');
+  });
+
+  it('returns 400 NO_ELIGIBLE_APPROVER when Trent submits >= $1,000', async () => {
+    const created = await request(app)
+      .post('/api/requests')
+      .set('X-User-Id', 'u_trent')
+      .send({
+        expenseType: 'Software',
+        amountCents: 150000,
+        description: 'Large finance-team purchase',
+        billable: false,
+        additionalJustification: 'Needed for year-end close',
+      });
+
+    const res = await request(app)
+      .post(`/api/requests/${created.body.id}/submit`)
+      .set('X-User-Id', 'u_trent')
+      .send();
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('NO_ELIGIBLE_APPROVER');
+  });
+
+  it('returns 401 without X-User-Id', async () => {
+    const res = await request(app).post('/api/requests/REQ-001/submit').send();
+    expect(res.status).toBe(401);
+  });
+});

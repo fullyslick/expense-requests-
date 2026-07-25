@@ -1,5 +1,11 @@
 import { Router } from 'express';
-import { createDraft, getRequest, listRequests, updateDraft } from '../services/requests.service';
+import {
+  createDraft,
+  getRequest,
+  listRequests,
+  submitRequest,
+  updateDraft,
+} from '../services/requests.service';
 import { toResponse } from '../services/serialize';
 
 const router = Router();
@@ -27,6 +33,14 @@ router.post('/', (req, res, next) => {
 router.patch('/:id', (req, res, next) => {
   try {
     res.json(toResponse(updateDraft(req.currentUser, req.params.id, req.body)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/submit', (req, res, next) => {
+  try {
+    res.json(toResponse(submitRequest(req.currentUser, req.params.id)));
   } catch (err) {
     next(err);
   }

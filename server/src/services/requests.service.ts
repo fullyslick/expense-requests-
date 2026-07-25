@@ -1,4 +1,6 @@
-import { NotFoundError } from '../errors';
+import { requestValuesSchema } from 'shared/validation';
+import { NotFoundError, ValidationError } from '../errors';
+import { pickApprover } from '../logic/pickApprover';
 import * as store from '../store';
 import { assertOwner, assertStatus } from './guards';
 import type { ExpenseRequest, RequestValues, User } from 'shared/types';
@@ -59,6 +61,27 @@ export function updateDraft(actor: User, id: string, body: unknown): ExpenseRequ
   assertStatus(request, 'Draft');
 
   request.values = { ...request.values, ...pickValues(body) };
+  return store.saveRequest(request);
+}
+
+export function submitRequest(actor: User, id: string): ExpenseRequest {
+  const request = getRequest(id);
+  assertOwner(actor, request);
+  assertStatus(request, 'Draft');
+
+  const result = requestValuesSchema.safeParse(request.values);
+  if (!result.success) {
+    throw new ValidationError(result.error.flatten().fieldErrors);
+  }
+
+  const approverId = pickApprover(actor, result.data.amountCents, store.listUsers());
+
+  request.events.push({
+    type: 'submitted',
+    at: new Date().toISOString(),
+    actorId: actor.id,
+    approverId,
+  });
   return store.saveRequest(request);
 }
 

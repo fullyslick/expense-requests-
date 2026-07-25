@@ -312,14 +312,14 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 
 ## Phase 7 — Submit and routing
 
-- [ ] `submitRequest(actor, id)` in `requests.service.ts` — the reference implementation is in **The four layers** section above. Order matters: fetch → `assertOwner` → `assertStatus('Draft')` → validate → `pickApprover` → append event → save.
-- [ ] Zod failure → `ValidationError(result.error.flatten().fieldErrors)`
-- [ ] `pickApprover` throwing → surfaces as `NoEligibleApproverError` (either thrown directly by `logic/` or wrapped here — pick one and be consistent)
-- [ ] `POST /api/requests/:id/submit` — thin handler
+- [x] `submitRequest(actor, id)` in `requests.service.ts` — the referece implementation is in **The four layers** section above. Order matters: fetch → `assertOwner` → `assertStatus('Draft')` → validate → `pickApprover` → append event → save.
+- [x] Zod failure → `ValidationError(result.error.flatten().fieldErrors)`
+- [x] `pickApprover` throwing → surfaces as `NoEligibleApproverError` (either thrown directly by `logic/` or wrapped here — pick one and be consistent)
+- [x] `POST /api/requests/:id/submit` — thin handler
 
-- [ ] **Tests (service, no HTTP):** every rule below can be asserted by calling `submitRequest` directly and checking the thrown error type. Do these first — they're faster to write and the failures are clearer.
-- [ ] **Tests (HTTP, a subset):** confirm each error type maps to the right status and body shape
-- [ ] **Cases:**
+- [x] **Tests (service, no HTTP):** every rule below can be asserted by calling `submitRequest` directly and checking the thrown error type. Do these first — they're faster to write and the failures are clearer.
+- [x] **Tests (HTTP, a subset):** confirm each error type maps to the right status and body shape
+- [x] **Cases:**
   - valid draft under $1,000 → Submitted, approver is the manager
   - valid draft at/over $1,000 → approver is finance
   - billable without `client` → 400, `fieldErrors.client` present
