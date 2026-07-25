@@ -295,10 +295,10 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
   - `assertOwner` → `assertStatus(request, 'Draft')`
   - merges `pickValues(body)` into `values`
   - **no validation**
-- [ ] Routes: `POST /api/requests`, `PATCH /api/requests/:id` — thin handlers over the two service calls
+- [x] Routes: `POST /api/requests`, `PATCH /api/requests/:id` — thin handlers over the two service calls
 
-- [ ] **Tests (service, no HTTP):** `createDraft(alice, { requesterId: 'u_bob' })` still yields `u_alice`; `updateDraft(bob, 'REQ-001')` throws `ForbiddenError`; `updateDraft(alice, 'REQ-002')` throws `InvalidTransitionError`
-- [ ] **Tests (HTTP):**
+- [x] **Tests (service, no HTTP):** `createDraft(alice, { requesterId: 'u_bob' })` still yields `u_alice`; `updateDraft(bob, 'REQ-001')` throws `ForbiddenError`; `updateDraft(alice, 'REQ-002')` throws `InvalidTransitionError`
+- [x] **Tests (HTTP):**
   - create as Alice → `requesterId` is `u_alice` even if body says `u_bob`
   - body containing `status`, `approverId`, `requesterId` → all three ignored
   - PATCH someone else's draft → 403
