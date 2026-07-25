@@ -1,6 +1,6 @@
 import { NotFoundError } from '../errors';
 import * as store from '../store';
-import type { ExpenseRequest, RequestValues } from 'shared/types';
+import type { ExpenseRequest, RequestValues, User } from 'shared/types';
 
 // Record (not a plain array) so TS enforces every RequestValues key is
 // listed here — add a field to RequestValues and this won't compile until
@@ -40,6 +40,16 @@ export function pickValues(body: unknown): Partial<RequestValues> {
   }
 
   return result as Partial<RequestValues>;
+}
+
+export function createDraft(actor: User, body: unknown): ExpenseRequest {
+  const request: ExpenseRequest = {
+    id: store.generateRequestId(),
+    requesterId: actor.id,
+    values: pickValues(body),
+    events: [{ type: 'created', at: new Date().toISOString(), actorId: actor.id }],
+  };
+  return store.saveRequest(request);
 }
 
 export function listRequests(): ExpenseRequest[] {

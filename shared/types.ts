@@ -41,6 +41,10 @@ export type RequestValues = {
 export type ExpenseRequest = {
   id: string;
   requesterId: string;
-  values: RequestValues;
+  // Partial, not RequestValues: a Draft is legally incomplete (guardrail #6 —
+  // "Drafts skip validation. Submit runs it."). The full RequestValues shape
+  // is only guaranteed once shared/validation.ts's requestValuesSchema has
+  // accepted it, at submit time.
+  values: Partial<RequestValues>;
   events: HistoryEvent[];
 };
