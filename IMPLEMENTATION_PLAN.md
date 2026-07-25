@@ -356,16 +356,16 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 
 Supertest against the full app. With the rules already unit-tested at the service layer, this phase proves the **wiring** — that auth, guards, and the error handler are actually mounted and that a hostile `curl` hits them. Both layers matter: a perfect service that isn't wired into the router still fails requirement 5.
 
-- [ ] **Lifecycle:** create → PATCH → submit → approve, asserting status and history length at each step
-- [ ] **Rejection path:** create → submit → reject
-- [ ] **Security sweep** (one test per guardrail):
+- [x] **Lifecycle:** create → PATCH → submit → approve, asserting status and history length at each step
+- [x] **Rejection path:** create → submit → reject
+- [x] **Security sweep** (one test per guardrail):
   - no auth header → 401
   - submit another user's draft → 403
   - approve as a non-approver → 403
   - approve as the requester → 403
   - PATCH a non-Draft → 409
   - POST/PATCH with `status`/`requesterId`/`approverId` in the body → ignored
-- [ ] History entries carry `actorId` and `at` on every transition
+- [x] History entries carry `actorId` and `at` on every transition
 
 **Verify:** full suite green. Note the count in `NOTES.md`.
 **Commit:** `test: lifecycle and security integration coverage`
