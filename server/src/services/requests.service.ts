@@ -1,5 +1,6 @@
 import { NotFoundError } from '../errors';
 import * as store from '../store';
+import { assertOwner, assertStatus } from './guards';
 import type { ExpenseRequest, RequestValues, User } from 'shared/types';
 
 // Record (not a plain array) so TS enforces every RequestValues key is
@@ -49,6 +50,15 @@ export function createDraft(actor: User, body: unknown): ExpenseRequest {
     values: pickValues(body),
     events: [{ type: 'created', at: new Date().toISOString(), actorId: actor.id }],
   };
+  return store.saveRequest(request);
+}
+
+export function updateDraft(actor: User, id: string, body: unknown): ExpenseRequest {
+  const request = getRequest(id);
+  assertOwner(actor, request);
+  assertStatus(request, 'Draft');
+
+  request.values = { ...request.values, ...pickValues(body) };
   return store.saveRequest(request);
 }
 

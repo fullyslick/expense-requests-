@@ -291,7 +291,7 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
   - `requesterId` = `actor.id` (**never from body**)
   - appends `{ type: 'created', at: now, actorId: actor.id }`
   - **no validation** — an empty draft is legal
-- [ ] `updateDraft(actor, id, body)` in the service
+- [x] `updateDraft(actor, id, body)` in the service
   - `assertOwner` → `assertStatus(request, 'Draft')`
   - merges `pickValues(body)` into `values`
   - **no validation**
