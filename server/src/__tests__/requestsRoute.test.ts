@@ -231,3 +231,59 @@ describe('POST /api/requests/:id/submit', () => {
     expect(res.status).toBe(401);
   });
 });
+
+async function createSubmittedByAlice() {
+  const created = await request(app)
+    .post('/api/requests')
+    .set('X-User-Id', 'u_alice')
+    .send({
+      expenseType: 'Travel',
+      amountCents: 5000,
+      description: 'Taxi',
+      billable: false,
+    });
+
+  await request(app).post(`/api/requests/${created.body.id}/submit`).set('X-User-Id', 'u_alice');
+
+  return created.body.id as string;
+}
+
+describe('POST /api/requests/:id/approve', () => {
+  it('approves when Carol is the assigned approver', async () => {
+    const id = await createSubmittedByAlice();
+
+    const res = await request(app).post(`/api/requests/${id}/approve`).set('X-User-Id', 'u_carol');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('Approved');
+  });
+
+  it("returns 403 when the requester tries to approve their own request", async () => {
+    const id = await createSubmittedByAlice();
+
+    const res = await request(app).post(`/api/requests/${id}/approve`).set('X-User-Id', 'u_alice');
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('FORBIDDEN');
+  });
+});
+
+describe('POST /api/requests/:id/reject', () => {
+  it('rejects when Carol is the assigned approver', async () => {
+    const id = await createSubmittedByAlice();
+
+    const res = await request(app).post(`/api/requests/${id}/reject`).set('X-User-Id', 'u_carol');
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('Rejected');
+  });
+
+  it('returns 403 when a non-approver tries to reject', async () => {
+    const id = await createSubmittedByAlice();
+
+    const res = await request(app).post(`/api/requests/${id}/reject`).set('X-User-Id', 'u_bob');
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toBe('FORBIDDEN');
+  });
+});

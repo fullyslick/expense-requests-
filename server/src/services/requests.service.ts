@@ -2,7 +2,7 @@ import { requestValuesSchema } from 'shared/validation';
 import { NotFoundError, ValidationError } from '../errors';
 import { pickApprover } from '../logic/pickApprover';
 import * as store from '../store';
-import { assertOwner, assertStatus } from './guards';
+import { assertAssignedApprover, assertOwner, assertStatus } from './guards';
 import type { ExpenseRequest, RequestValues, User } from 'shared/types';
 
 // Record (not a plain array) so TS enforces every RequestValues key is
@@ -83,6 +83,23 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
     approverId,
   });
   return store.saveRequest(request);
+}
+
+function decide(actor: User, id: string, type: 'approved' | 'rejected'): ExpenseRequest {
+  const request = getRequest(id);
+  assertAssignedApprover(actor, request);
+  assertStatus(request, 'Submitted');
+
+  request.events.push({ type, at: new Date().toISOString(), actorId: actor.id });
+  return store.saveRequest(request);
+}
+
+export function approveRequest(actor: User, id: string): ExpenseRequest {
+  return decide(actor, id, 'approved');
+}
+
+export function rejectRequest(actor: User, id: string): ExpenseRequest {
+  return decide(actor, id, 'rejected');
 }
 
 export function listRequests(): ExpenseRequest[] {

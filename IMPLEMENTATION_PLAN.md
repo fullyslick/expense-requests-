@@ -336,11 +336,11 @@ Build the error layer **first** — every service in Phases 6–8 depends on it 
 
 ## Phase 8 — Approve and reject
 
-- [ ] `approveRequest(actor, id)` and `rejectRequest(actor, id)` — both are `assertAssignedApprover` → `assertStatus('Submitted')` → append event → save. If they end up identical apart from the event type, collapse them into one `decide(actor, id, 'approved' | 'rejected')` and keep two thin exports.
-- [ ] Note that `assertAssignedApprover` covers the self-approval case for free: the requester is never the approver, so no separate check is needed
-- [ ] Routes: `POST /api/requests/:id/approve`, `POST /api/requests/:id/reject`
+- [x] `approveRequest(actor, id)` and `rejectRequest(actor, id)` — both are `assertAssignedApprover` → `assertStatus('Submitted')` → append event → save. If they end up identical apart from the event type, collapse them into one `decide(actor, id, 'approved' | 'rejected')` and keep two thin exports.
+- [x] Note that `assertAssignedApprover` covers the self-approval case for free: the requester is never the approver, so no separate check is needed
+- [x] Routes: `POST /api/requests/:id/approve`, `POST /api/requests/:id/reject`
 
-- [ ] **Tests (service first, then a couple over HTTP):**
+- [x] **Tests (service first, then a couple over HTTP):**
   - Carol approves REQ-002 (she's the assigned approver) → `Approved`
   - Bob tries to approve REQ-002 → 403
   - **Alice tries to approve her own REQ-002 → 403** (she's the requester, not the approver)

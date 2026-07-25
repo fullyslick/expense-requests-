@@ -1,8 +1,10 @@
 import { Router } from 'express';
 import {
+  approveRequest,
   createDraft,
   getRequest,
   listRequests,
+  rejectRequest,
   submitRequest,
   updateDraft,
 } from '../services/requests.service';
@@ -41,6 +43,22 @@ router.patch('/:id', (req, res, next) => {
 router.post('/:id/submit', (req, res, next) => {
   try {
     res.json(toResponse(submitRequest(req.currentUser, req.params.id)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/approve', (req, res, next) => {
+  try {
+    res.json(toResponse(approveRequest(req.currentUser, req.params.id)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/:id/reject', (req, res, next) => {
+  try {
+    res.json(toResponse(rejectRequest(req.currentUser, req.params.id)));
   } catch (err) {
     next(err);
   }
