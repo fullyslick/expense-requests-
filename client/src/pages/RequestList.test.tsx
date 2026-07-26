@@ -94,7 +94,10 @@ describe('RequestList', () => {
 
   it('links the New Request button to the create route', () => {
     renderList({ data: [] });
-    expect(screen.getByRole('link', { name: /New Request/ })).toHaveAttribute(
+    // Base UI's Button always presents role="button" to assistive tech, even
+    // rendered as an <a> via `render` — nativeButton={false} is what tells it
+    // the underlying tag isn't a real <button>, not what changes the role.
+    expect(screen.getByRole('button', { name: /New Request/ })).toHaveAttribute(
       'href',
       '/requests/new',
     );

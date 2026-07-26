@@ -29,7 +29,7 @@ export default function RequestList() {
         {/* The mockup shows no visible page title, but the route still needs a
             heading to be navigable by screen reader. */}
         <h1 className="sr-only">Requests</h1>
-        <Button className="rounded-sm" render={<Link to="/requests/new" />}>
+        <Button className="rounded-sm" render={<Link to="/requests/new" />} nativeButton={false}>
           <Plus />
           New Request
         </Button>
