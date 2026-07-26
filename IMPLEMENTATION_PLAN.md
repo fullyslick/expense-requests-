@@ -403,7 +403,7 @@ Supertest against the full app. With the rules already unit-tested at the servic
 - [ ] Mutations do **not** go through the hook — imperative `api.post` /
   `api.patch` in click handlers, where in-flight state and `fieldErrors`
   live (ADR §9)
-- [ ] `useApiQuery` stays in `client/` — it imports React and reads the
+- [x] `useApiQuery` stays in `client/` — it imports React and reads the
   current-user context, so it is not `/shared` material
 - [ ] App header: user dropdown showing **name and role**, visible on every page; changing it refetches the current page
 
