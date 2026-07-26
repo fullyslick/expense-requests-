@@ -382,7 +382,7 @@ Supertest against the full app. With the rules already unit-tested at the servic
 
 - [x] Tailwind + shadcn init. Add **primitives only**: `button input select checkbox textarea label table badge`
 - [x] **Do not run `shadcn add form`** — guardrail #9
-- [ ] React Router in **Declarative mode**: `BrowserRouter` + `Routes`
+- [x] React Router in **Declarative mode**: `BrowserRouter` + `Routes`
   - `/requests` — list
   - `/requests/new` — create
   - `/requests/:id` — detail
