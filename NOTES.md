@@ -239,3 +239,9 @@ Root `package.json` got `"dev:client": "npm run dev --workspace=client"` in plac
 Per the plan's own Phase 0 line ("verify both apps... return a hello-world"), asked Claude to replace the default Vite counter demo in `App.tsx` with a plain `<h1>Hello World</h1>`, matching the server's own plain-text hello world. It also deleted the now-unused template leftovers (`App.css`, logo assets, `public/icons.svg`, `.oxlintrc.json`, client's own generic `README.md`) and gave `index.html` a real title instead of `client`.
 
 Also noticed `client/.gitignore` existed while `server`/`shared` had none, and asked whether to fold it into the root one for consistency. Agreed, so Claude merged client's rules into the root `.gitignore`, dropped the now-redundant `client/node_modules`/`server/node_modules` lines (the bare `node_modules` pattern already covers any depth), and deleted `client/.gitignore`.
+
+# Designing UI
+
+I have used Claude Design to create mocks of the design in HTML format.
+
+The prompts can be found in `docs/claude-design-guide`
