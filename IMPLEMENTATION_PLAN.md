@@ -435,22 +435,22 @@ The most intricate UI phase. Budget accordingly.
   - `client` select — appears when `billable` is checked
   - `additionalJustification` — appears when amount `>= $1,000`
   - `otherReason` — appears when type is `Other`
-- [ ] Amount input holds a **dollar string** in local state; converts via
+- [x] Amount input holds a **dollar string** in local state; converts via
   `shared/money.ts` **on every write — Save Draft included**, not only on submit
-  - [ ] Converting only on the submit path persists `"45.00"` into a field typed
+  - [x] Converting only on the submit path persists `"45.00"` into a field typed
     `amountCents: number` and hands it back wrong on reload
-- [ ] Two actions: **Save Draft** (no validation) and **Submit**
-- [ ] Edit mode at `/requests/:id`: load existing values, block editing unless owner **and** Draft
+- [x] Two actions: **Save Draft** (no validation) and **Submit**
+- [x] Edit mode at `/requests/:id`: load existing values, block editing unless owner **and** Draft
 
 ### Which write endpoint (create vs. edit mode)
 
 The form has one branch that everything else depends on: **does it hold an id yet?**
 
-- [ ] `POST /requests` — first write only, on `/requests/new`
-- [ ] `PATCH /requests/:id` — every write after that, for the rest of the session
-- [ ] As soon as `POST /requests` returns, store the id **and**
+- [x] `POST /requests` — first write only, on `/requests/new`
+- [x] `PATCH /requests/:id` — every write after that, for the rest of the session
+- [x] As soon as `POST /requests` returns, store the id **and**
   `navigate('/requests/' + id, { replace: true })`
-  - [ ] **Why this is not optional:** without it, a 400 from `/submit` leaves the
+  - [x] **Why this is not optional:** without it, a 400 from `/submit` leaves the
     user on `/requests/new` holding no id. They fix the field, click Submit
     again, and the retry fires a **second** `POST /requests` — an orphan draft
     per failed attempt. Four seed records become eight during your own demo.
@@ -460,18 +460,18 @@ The form has one branch that everything else depends on: **does it hold an id ye
 The order below is the order the code runs in. Don't reshuffle it — the API-call
 mechanics sit *after* the gate that decides whether any call happens at all.
 
-- [ ] Local state: `isSubmitting`, `fieldErrors`, `formError`
-- [ ] Button disabled **only while in flight**, never because the form is invalid
-- [ ] Click → client Zod validation
-- [ ] **Invalid** → render field errors inline, focus the first bad field,
+- [x] Local state: `isSubmitting`, `fieldErrors`, `formError`
+- [x] Button disabled **only while in flight**, never because the form is invalid
+- [x] Click → client Zod validation
+- [x] **Invalid** → render field errors inline, focus the first bad field,
   **don't call the API**, button stays enabled
-- [ ] Errors appear only after the first submit attempt, then re-validate on
+- [x] Errors appear only after the first submit attempt, then re-validate on
   change so they clear as the user fixes them
-- [ ] **Valid** → `setIsSubmitting(true)` → persist values (`POST` or `PATCH`
+- [x] **Valid** → `setIsSubmitting(true)` → persist values (`POST` or `PATCH`
   per the branch above) → `POST /requests/:id/submit` (**no body**)
-- [ ] `catch`: `err instanceof ApiError && err.fieldErrors` → `setFieldErrors`;
+- [x] `catch`: `err instanceof ApiError && err.fieldErrors` → `setFieldErrors`;
   otherwise `setFormError`. Re-enable the button either way (`finally`).
-- [ ] **Success** → navigate to the detail page
+- [x] **Success** → navigate to the detail page
 
 > **Save and submit are two requests — deliberately.** Submit takes no body, so
 > values must be persisted first. That means a failed submit still persists them:

@@ -370,3 +370,44 @@ Confirmed the fix against the real browser, not just jsdom: every label click fo
 Seven tests in `RequestForm.test.tsx`, each conditional exercised in **both directions** (appearing and retracting), plus one boundary test and one "don't crash on garbage input" test. Ran a mutation check before trusting them: flipped `cents >= THOUSAND_DOLLARS_IN_CENTS` to `>` and only the boundary test failed — confirms it actually pins the off-by-one guardrail #2 warns about, rather than passing by coincidence.
 
 `npm test` sits at 178 (23 client / 155 across the other two workspaces), `eslint`, `tsc -b` on both workspaces, and prettier are all clean. Ticked the two Phase 12 checkboxes this covers — base fields and conditional visibility — and left the rest of the phase (write endpoints, submit behaviour, edit mode) unticked; wiring is next.
+
+## Phase 12 finished — writes, submit, and edit mode
+
+Picked up the rest of Phase 12. The three selected checkboxes turned out to be inseparable from the two sections below them in the plan: "Save Draft and Submit" can't exist without the create-vs-edit endpoint branch deciding *where* a write goes, and that branch is the thing the whole submit sequence is built on. So this covers the amount conversion, both actions, edit mode, the write-endpoint branch, and all of ADR §9's submit behaviour in one go.
+
+### The route conflict, and why edit lives at `/requests/:id/edit`
+
+The plan says edit mode is at `/requests/:id` and that `POST /requests` should be followed by `navigate('/requests/' + id, { replace: true })`. But Phase 10 already routed `/requests/:id` to the **detail** page, and Phase 13 builds that page there. Both can't own the same URL.
+
+`design-mockups/detail-page-and-history.html` settles it. Its demo viewer has a "Requester · Draft" state, and that state renders the read-only detail page *with an Edit button in the header* — so detail and edit are two pages, and the mockup expects a link from one to the other. Added `/requests/:id/edit` as its own route and pointed the post-POST replace at it. The ADR's actual requirement is that the form *holds an id* before `/submit` runs so a retry can't create a second draft; which path spells that id is incidental, and `/requests/:id` was already taken. Deviation from the plan's literal text, noted here rather than done quietly.
+
+The Edit button that reaches this route is Phase 13's job — the detail page is still a stub — so for now edit mode is reachable by URL only.
+
+### The submit sequence
+
+`persist()` is the single branch everything else leans on: if the form holds an id it PATCHes, otherwise it POSTs, stores the returned id, and replaces the URL. Both Save Draft and Submit call it, which is what makes "dollars convert on every write" fall out for free rather than needing to be remembered twice — `toRequestValues` runs `dollarsToCents` on the way out, so `amountCents` is always an integer regardless of which button was pressed.
+
+Worth recording that the orphan-draft failure the plan warns about is *real* and I reproduced it deliberately rather than taking it on faith. Acting as Trent (the only finance user), a $1,500 request routes to finance — which is Trent himself — so the server refuses with `NO_ELIGIBLE_APPROVER`. That's a genuine 400 arriving *after* `POST /requests` already succeeded, which is exactly the shape the guard exists for. Watched it: REQ-006 got created, the URL flipped to `/requests/REQ-006/edit`, the banner showed the server's message, the buttons re-enabled, and the typed values stayed put. Lowered the amount to $500, hit Submit again — and the request count stayed at 6. The retry PATCHed. Had the id not been claimed, that second attempt would have made REQ-007.
+
+There's also a test for it now (`RequestForm.submit.test.tsx`) that asserts exactly one `POST /requests` across a failed-then-successful submit, so the guard doesn't quietly rot.
+
+### Two bugs the verification actually caught
+
+**Server field errors for hidden fields rendered nowhere.** The unit test for "server returns `fieldErrors.client`" failed, and it was the component at fault, not the test: `<FieldError errors={fieldErrors.client} />` sits inside the `{showClient && ...}` block, so when billable is unchecked the server's rejection had nowhere to render and the submit failed silently. This directly undercuts the "server is authoritative" claim — the whole point is that a rule the client doesn't mirror still surfaces. Fixed by diffing the error keys against the set of fields currently rendering a `FieldError` and spilling the remainder into the form-level banner. ADR §11's version-skew scenario (a server whose rules tightened while the client still runs an older bundle) is exactly the case this protects.
+
+**The owner check raced the current-user context.** `currentUser` is `null` until `AppHeader` hydrates it from `/api/users`, and the edit-mode guard compares `existing.requesterId !== currentUser?.id`. In that window the comparison is against `undefined`, so the real owner gets told "Only the requester can edit this request." I hit this by accident — Trent opened his own submitted request and got the wrong one of the two block messages — then reproduced it properly by clearing `localStorage` and deep-linking to an edit URL. Fixed by treating "identity not yet known" as still loading rather than as a failed permission check.
+
+### Verified
+
+Both of the phase's own verify lines, end to end:
+
+- A billable request with no client, submitted by `curl` to bypass the client entirely, returns `{"error":"VALIDATION_FAILED","fieldErrors":{"client":["Client is required for billable expenses"]}}` — the server's own message, in the exact shape the form renders inline.
+- The failed-then-fixed submit on `/requests/new` leaves **one** new request, not two.
+
+Plus: an invalid submit makes no API call at all (request count unchanged), focus lands on the first bad field, both buttons stay enabled, errors stay hidden until the first submit and then clear as fields are fixed, Save Draft persists `77777` cents (an int, not `"777.77"`) and leaves the status at Draft with no `submitted` event, edit mode hydrates existing values, and both block reasons render correctly for the not-owner and not-Draft cases.
+
+`centsToDollarString` is new in `shared/money.ts` — `centsToDisplay` adds a `$` and thousands separators, which an `<input type="number">` rejects outright, so hydrating the form needed a bare-string counterpart to `dollarsToCents`. It round-trips through `dollarsToCents` in its own test.
+
+One deliberate non-fix: a conditional field that becomes hidden keeps whatever was last persisted, because PATCH merges. Dropping the amount below $1,000 leaves the old `additionalJustification` on the record. Nothing validates against it, and it means raising the amount again doesn't lose the text — but it's a choice, not an oversight.
+
+`npm test` is at 185 (30 client / 127 server / 31 shared — 7 new submit-flow tests and 3 new money tests), with `eslint`, `tsc` on both workspaces, and prettier clean.

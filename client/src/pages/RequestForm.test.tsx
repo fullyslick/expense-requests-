@@ -1,13 +1,18 @@
 import { MemoryRouter } from 'react-router-dom';
 
 import RequestForm from './RequestForm';
+import { CurrentUserProvider } from '@/context/CurrentUser';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+// No route params, so the form is in create mode and useApiQuery gets a null
+// path — these tests never reach the network.
 function renderForm() {
   render(
     <MemoryRouter>
-      <RequestForm />
+      <CurrentUserProvider>
+        <RequestForm />
+      </CurrentUserProvider>
     </MemoryRouter>,
   );
 }

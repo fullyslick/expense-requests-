@@ -1,4 +1,4 @@
-import { centsToDisplay, dollarsToCents } from '../money';
+import { centsToDisplay, centsToDollarString, dollarsToCents } from '../money';
 
 describe('dollarsToCents', () => {
   it('converts a whole-and-cents amount', () => {
@@ -47,6 +47,24 @@ describe('centsToDisplay', () => {
 
   it('formats zero', () => {
     expect(centsToDisplay(0)).toBe('$0.00');
+  });
+});
+
+describe('centsToDollarString', () => {
+  it('formats without the $ or thousands separators an input type=number rejects', () => {
+    expect(centsToDollarString(100000)).toBe('1000.00');
+    expect(centsToDollarString(123456)).toBe('1234.56');
+  });
+
+  it('pads cents and handles zero', () => {
+    expect(centsToDollarString(5)).toBe('0.05');
+    expect(centsToDollarString(0)).toBe('0.00');
+  });
+
+  it('feeds straight back into dollarsToCents', () => {
+    for (const cents of [0, 5, 1250, 99999, 100000, 123456]) {
+      expect(dollarsToCents(centsToDollarString(cents))).toBe(cents);
+    }
   });
 });
 

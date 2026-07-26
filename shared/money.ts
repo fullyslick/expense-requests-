@@ -25,3 +25,18 @@ export function centsToDisplay(cents: number): string {
 
   return `${sign}$${wholePart.toLocaleString('en-US')}.${centsPart}`;
 }
+
+// dollarsToCents' inverse, and deliberately not centsToDisplay: the form input
+// round-trips through this, and an <input type="number"> rejects the `$` and
+// thousands separators that the display formatter adds.
+export function centsToDollarString(cents: number): string {
+  if (!Number.isInteger(cents)) {
+    throw new Error(`Invalid cents amount: ${cents}`);
+  }
+
+  const sign = cents < 0 ? '-' : '';
+  const absCents = Math.abs(cents);
+  const centsPart = String(absCents % 100).padStart(2, '0');
+
+  return `${sign}${Math.floor(absCents / 100)}.${centsPart}`;
+}

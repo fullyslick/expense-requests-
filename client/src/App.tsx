@@ -1,9 +1,10 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import AppHeader from './components/AppHeader';
 import RequestDetail from './pages/RequestDetail';
 import RequestForm from './pages/RequestForm';
 import RequestList from './pages/RequestList';
+
+import AppHeader from './components/AppHeader';
 
 function App() {
   return (
@@ -15,6 +16,9 @@ function App() {
           <Route path="/requests" element={<RequestList />} />
           <Route path="/requests/new" element={<RequestForm />} />
           <Route path="/requests/:id" element={<RequestDetail />} />
+          {/* Edit is its own route because /requests/:id is the read-only
+              detail page — the mockup reaches this from its "Edit" button. */}
+          <Route path="/requests/:id/edit" element={<RequestForm />} />
         </Routes>
       </main>
     </>
