@@ -36,6 +36,15 @@ export default defineConfig([
     },
   },
   {
+    // Context files pair a Provider component with its consumer hook (and
+    // sometimes a shared constant) by convention — same rationale as the
+    // shadcn override above.
+    files: ['client/src/context/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     files: ['server/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.node,

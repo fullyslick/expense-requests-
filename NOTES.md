@@ -245,3 +245,15 @@ Also noticed `client/.gitignore` existed while `server`/`shared` had none, and a
 I have used Claude Design to create mocks of the design in HTML format.
 
 The prompts can be found in `docs/claude-design-guide`
+
+# Router and Current-User Context
+
+Started Phase 10 with the two structural pieces the rest of the frontend hangs off: routing and identity.
+
+`App.tsx` now have a `Routes` tree in Declarative mode — `/requests` (list), `/requests/new` (create), `/requests/:id` (detail), plus a `/` → `/requests` redirect. `RequestList`/`RequestForm`/`RequestDetail` are one-line stubs for now; Phases 11–13 fill them in. `BrowserRouter` wraps `App` in `main.tsx`.
+
+Then `context/CurrentUser.tsx` — a `CurrentUserProvider` holding `currentUser: User | null`, seeded from `localStorage` on first render, plus a `useCurrentUser()` hook that throws if called outside the provider rather than silently returning `undefined`. The storage key is exported as `CURRENT_USER_STORAGE_KEY` rather than inlined, since the ADR calls out that `api/client.ts` (next) will read the same key directly — it can't call `useContext` because it isn't a component — and a shared constant is what keeps those two files from drifting on the key name.
+
+Hit the same `react-refresh/only-export-components` lint friction the shadcn primitives hit earlier: the file exports the Provider component alongside the hook and the constant, which the rule flags on principle. Added a matching `client/src/context/**` override rather than splitting Provider/hook/constant into separate files — Provider+hook+constant in one file is the standard React Context shape, not something worth fighting.
+
+No browser automation available this session, so verified with `tsc -b`, `eslint .` (both clean), and curl against a locally booted `vite` dev server confirming `main.tsx` and the new context file transform and serve without error.
