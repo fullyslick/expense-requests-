@@ -392,14 +392,14 @@ Supertest against the full app. With the rules already unit-tested at the servic
   - [x] `ApiError { status, code, message, fieldErrors? }` thrown on any non-2xx
   - [x] exports `api.get(path, signal?)`, `api.post(path, body?)`,
     `api.patch(path, body)`
-- [ ] `api/useApiQuery.ts` — **reads only**, ~25 lines,
+- [x] `api/useApiQuery.ts` — **reads only**, ~25 lines,
   returns `{ data, loading, error, refetch }`
-  - [ ] deps `[path, currentUser.id, tick]` — the `currentUser.id` dep is what
+  - [x] deps `[path, currentUser.id, tick]` — the `currentUser.id` dep is what
     makes "switching users refetches the page" true
-  - [ ] `AbortController` in the effect, `abort()` in cleanup, swallow
+  - [x] `AbortController` in the effect, `abort()` in cleanup, swallow
     `AbortError` (superseded, not a failure)
-  - [ ] `path: string | null` so the form page can no-op in create mode
-  - [ ] no options bag, no cache, no dedupe, no retry
+  - [x] `path: string | null` so the form page can no-op in create mode
+  - [x] no options bag, no cache, no dedupe, no retry
 - [ ] Mutations do **not** go through the hook — imperative `api.post` /
   `api.patch` in click handlers, where in-flight state and `fieldErrors`
   live (ADR §9)
