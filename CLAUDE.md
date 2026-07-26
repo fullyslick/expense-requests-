@@ -99,6 +99,27 @@ Do not run `shadcn add form`, and do not add `react-hook-form`. Conditional fiel
 
 The `@/*` alias maps to `client/src/*` and must stay declared in **both** `client/tsconfig.json` and `client/tsconfig.app.json` — the shadcn CLI only reads the top-level one, and writes files into a literal `@/` folder if it's missing there.
 
+## Design validation
+
+Reference mockups live in .claude/design/mockups/ (list-page.html, request-form.html,
+detail-page-and-history.html, app-header). After finishing each frontend page (Phase 11–13 in
+IMPLEMENTATION_PLAN.md), do a validation pass using Chrome (run `/chrome`
+first if not already connected):
+
+1. Open the live route (e.g. localhost:5173/requests) in a tab.
+2. Open the matching file:///.../design/mockups/*.html in another tab.
+3. Compare: status badge colors, table column order, spacing/hierarchy,
+   button placement, error state rendering.
+4. For request-form.html specifically: click the "Billable" checkbox and
+   change "Expense type" to "Other" in the LIVE app, and confirm the
+   conditional fields appear/disappear as they do in the mockup's demo.
+
+Report deviations, don't silently "fix" them against the mockup.
+
+**If the mockup and requirements.md/ADR.md disagree, the spec wins.**
+Known case: ADR §9 says Submit is disabled only while in-flight, never for
+invalidity — don't match the mockup if it shows otherwise.
+
 ## Conventions
 
 - **Comments are terse and explain *why*, not *what*.** Most code carries none. Reserve them for the one line whose reasoning isn't obvious from reading it.
