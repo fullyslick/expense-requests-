@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 
+import { useApiQuery } from '@/api/useApiQuery';
+import { DEFAULT_USER_ID, useCurrentUser } from '@/context/CurrentUser';
 import type { User, UserRole } from 'shared/types';
 
-import { useApiQuery } from '@/api/useApiQuery';
 import {
   Select,
   SelectContent,
@@ -11,7 +12,6 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@/components/ui/select';
-import { DEFAULT_USER_ID, useCurrentUser } from '@/context/CurrentUser';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   employee: 'Employee',
@@ -50,7 +50,7 @@ export default function AppHeader() {
   }
 
   return (
-    <header className="flex items-center justify-between border-b px-6 py-3">
+    <header className="flex items-center justify-between border-b px-6 py-3 bg-white">
       <span className="text-sm font-semibold">Expensely</span>
       {currentUser && (
         <Select value={currentUser.id} onValueChange={handleValueChange}>
@@ -71,9 +71,7 @@ export default function AppHeader() {
                   <Avatar name={user.name} />
                   <span className="flex flex-col">
                     <span>{user.name}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {ROLE_LABELS[user.role]}
-                    </span>
+                    <span className="text-xs text-muted-foreground">{ROLE_LABELS[user.role]}</span>
                   </span>
                 </SelectItem>
               ))}

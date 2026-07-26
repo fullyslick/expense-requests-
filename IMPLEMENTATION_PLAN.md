@@ -414,12 +414,12 @@ Supertest against the full app. With the rules already unit-tested at the servic
 
 ## Phase 11 — List page
 
-- [ ] Plain `<table>` — no data grid
-- [ ] Columns: ID, type, amount (formatted dollars), status badge, requester name, created date
-- [ ] Status badges: Draft grey, Submitted blue, Approved green, Rejected red
-- [ ] Rows link to `/requests/:id`
-- [ ] "New Request" button → `/requests/new`
-- [ ] Loading and error states (a line of text each is fine)
+- [x] Plain `<table>` — no data grid
+- [x] Columns: ID, type, amount (formatted dollars), status badge, requester name, created date
+- [x] Status badges: Draft grey, Submitted blue, Approved green, Rejected red
+- [x] Rows link to `/requests/:id`
+- [x] "New Request" button → `/requests/new`
+- [x] Loading and error states (a line of text each is fine)
 
 **Verify:** four seed rows render with correct derived statuses.
 **Commit:** `feat: request list page`

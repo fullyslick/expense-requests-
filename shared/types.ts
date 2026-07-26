@@ -48,3 +48,12 @@ export type ExpenseRequest = {
   values: Partial<RequestValues>;
   events: HistoryEvent[];
 };
+
+// The wire shape every endpoint returns. Lives here rather than in the server
+// because the client types its responses against it too. The extra fields are
+// all derived at serialize time — none of them are stored (guardrail #3).
+export type ExpenseRequestResponse = ExpenseRequest & {
+  status: Status;
+  approverId?: string;
+  requesterName: string;
+};
