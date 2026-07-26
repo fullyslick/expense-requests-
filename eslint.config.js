@@ -27,6 +27,15 @@ export default defineConfig([
     },
   },
   {
+    // Generated shadcn primitives: each file pairs a component with a
+    // `cva` variants export by convention, which react-refresh's
+    // components-only-export rule otherwise flags.
+    files: ['client/src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     files: ['server/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.node,

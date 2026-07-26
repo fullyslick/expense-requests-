@@ -142,12 +142,12 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 
 - [x] Root `package.json` with npm workspaces: `["client", "server", "shared"]`
 - [x] Root scripts: `dev:server`, `test`
-- [ ] Root scripts `dev:client`,
+- [x] Root scripts `dev:client`,
 - [x] `/server`: TypeScript, Express, `tsx` for dev, Jest + Supertest as dev deps
-- [ ] `/client`: Vite + React + TypeScript
+- [x] `/client`: Vite + React + TypeScript
 - [x] `/shared`: `package.json` + `tsconfig.json`, no build step (both sides compile from source)
 - [x] Copy `users.json` and `requests.json` into `/server/data`
-- [] Verify both apps start and return a hello-world
+- [x] Verify both apps start and return a hello-world
 - [x] Create `NOTES.md` with the run instructions **now**, while they're fresh
 
 > **Simpler option if workspaces fight you:** drop the root package, install in `/client` and `/server` independently, and reference `/shared` through a tsconfig path alias in both. Note the choice in `NOTES.md`.
@@ -378,8 +378,8 @@ Supertest against the full app. With the rules already unit-tested at the servic
 
 ## Phase 10 — Shell, context, API client
 
-- [ ] Tailwind + shadcn init. Add **primitives only**: `button input select checkbox textarea label table badge`
-- [ ] **Do not run `shadcn add form`** — guardrail #9
+- [x] Tailwind + shadcn init. Add **primitives only**: `button input select checkbox textarea label table badge`
+- [x] **Do not run `shadcn add form`** — guardrail #9
 - [ ] React Router in **Declarative mode**: `BrowserRouter` + `Routes`
   - `/requests` — list
   - `/requests/new` — create

@@ -1,3 +1,18 @@
+## How to Run
+
+Prerequisites: Node `>=24.18.0`, npm `>=11.16.0`.
+
+```bash
+npm install                # once, from the repo root — covers client/server/shared
+npm run dev:server         # Express API, http://localhost:4000
+npm run dev:client         # Vite dev server, http://localhost:5173 (separate terminal)
+npm test                   # Jest (server, shared) + Vitest (client), all workspaces
+```
+
+The API needs an `X-User-Id` header on every request (fake auth — see ADR §6); use one of the seed ids in `server/data/users.json` (e.g. `u_alice`, `u_carol`). See `README.md` for the fuller version of this, including lint/format commands.
+
+---
+
 # AI Usage & Planning Process
 
 I started by asking Claude to generate an Architecture Decision Record (ADR) and an Implementation Plan based on the task requirements and my tech stack. I reviewed and refined the ADR before accepting it. The Implementation Plan, derived from the ADR and requirements, serves as a tracking tool for both me and Claude throughout development.
@@ -188,3 +203,30 @@ No store-sharing issues here unlike Phase 8's test file — each of these tests 
 **Backend is complete as of this phase** — `npm test` is 127 tests, all green, `tsc --noEmit` and `eslint` both clean. Every guardrail in the plan now has at least one test exercising it end-to-end through the real HTTP surface, not just at the service layer.
 
 Afterward, I asked Claude to re-run the same four scenarios as real `curl` requests against the actual running server, not Supertest's in-process app — wanting proof independent of the test suite itself, since a bug shared between the implementation and its own tests wouldn't show up by re-running the tests. It booted `tsx src/index.ts`, then walked the lifecycle, rejection path, all six security-sweep cases, and the history-entries check via `curl`, printing each response. Every result matched what the Jest suite already asserted — same status transitions, same event counts, same 401/403/409 codes, same mass-assignment fields silently dropped. Good confirmation that the tests reflect the real server's behavior rather than an artifact of how Supertest wires up the app in-process.
+
+# Frontend Scaffolding
+
+Backend done, so it was time to close out the remaining Phase 0 items (`/client`, `dev:client`) and — ahead of the strict phase order — install everything Part B's phases will need up front: React Router, Tailwind, shadcn, and a client test runner, so the actual feature work (Phase 10 onward) is pure implementation with no tooling detours.
+
+`npm create vite@latest client -- --template react-ts` for the scaffold. The template shipped a few things worth reconciling with the rest of the repo rather than left as-is: `oxlint` as its own linter (removed — the repo already lints everything through the root `eslint.config.js`, and server/shared don't carry their own lint scripts either, so client shouldn't either) and TypeScript `~6.0.2` (pinned back to `^5.7.2` to match server/shared/root, so there's one TS version across the workspace rather than three).
+
+Tailwind v4 needs no config file — just `@tailwindcss/vite` in the Vite plugins list and `@import 'tailwindcss';` at the top of the CSS entrypoint. Then `npx shadcn@latest init`, which asks for an import alias; used the conventional `@/*` → `./src/*`, wired into `vite.config.ts`'s `resolve.alias` and `tsconfig.app.json`'s `paths`.
+
+Two problems surfaced running the CLI, both worth a note for anyone repeating this:
+
+1. **shadcn's file-placement logic didn't resolve the alias.** It only reads `baseUrl`/`paths` off the top-level `tsconfig.json`, and the Vite template splits config into `tsconfig.json` (a bare `references` pointer) plus `tsconfig.app.json` (the real compiler options) — so with the alias only on the latter, `shadcn add` wrote files into a literal folder named `@` at the project root instead of resolving `@/components` to `src/components`. Fixed by adding the same `baseUrl`/`paths` to the top-level `tsconfig.json` too, then moving the already-generated files (`components/ui/*.tsx`, `lib/utils.ts`) into `src/` by hand and deleting the stray `@/` directory.
+2. **Including `../shared` in `tsconfig.app.json`** (so the client type-checks the shared module it imports, same pattern as `server/tsconfig.json`) also pulled `shared/__tests__/*.test.ts` into the client's compile scope. Those files use Jest globals (`describe`/`it`/`expect`), which server's `tsconfig.json` picks up automatically via its own `@types/jest`, but client's `tsconfig.app.json` sets an explicit `types: ["vite/client"]`, which suppresses that auto-inclusion — so `tsc -b` failed on every Jest global in every shared test file. Fixed by excluding `../shared/__tests__` from the client's `include`, since the client only ever needs the shared *source*, never its tests.
+
+`npx shadcn@latest add button input select checkbox textarea label table badge` for the primitive set the ADR calls for — nothing beyond that, and confirmed `shadcn/form` was never touched (guardrail #9). One thing worth flagging: the ADR's rationale names **Radix** as what shadcn sits on top of for keyboard nav and ARIA; the current shadcn CLI (`4.14.1`) generates components against **Base UI** instead (`@base-ui/react` — same team, positioned as Radix's successor). Functionally this serves the same purpose the ADR cared about, but it's a version-driven deviation from what's written in `ADR.md`, not a decision either of us made.
+
+Added Vitest + React Testing Library + jsdom as the client's test runner, matching the server's Jest setup in spirit. Configured `passWithNoTests: true` in `vitest.config.ts` since there are no component tests yet (those start in Phase 12/13) — without it, the root `npm test` would fail the moment client got a `"test"` script, since Vitest exits non-zero on an empty suite by default.
+
+Ran `npm audit` afterward and it flagged `react-router` for a CSRF-related advisory (GHSA-qwww-vcr4-c8h2). Read the advisory before deciding whether to act on it: it's scoped to React Router's RSC/Framework mode with server actions — a mode this app deliberately never uses, per the ADR's Declarative-mode decision (§8, precisely to avoid running a second server alongside Express). Fixing it would mean a breaking v7→v8 migration that also drops the separate `react-router-dom` package entirely, for a code path this app can't reach. Left it, and noted why here rather than fixing silently or ignoring the audit output entirely.
+
+Ran `prettier --write` over the new client files afterward — the Vite template and shadcn's generated components both use double quotes and no semicolons, which don't match this repo's prettier config (single quotes, semicolons, sorted imports). Reformatting is style-only and didn't change behavior; confirmed with `tsc -b`, `eslint .`, and the client's Vitest run all still clean afterward.
+
+Root `package.json` got `"dev:client": "npm run dev --workspace=client"` in place of the placeholder comment that had been sitting there since the backend-only phases. Verified live: `npm run dev:client` boots Vite and serves `200` on `http://localhost:5173`, and `npm test` from the root now runs all three workspaces (client/server/shared) without the client's empty suite breaking anything.
+
+Per the plan's own Phase 0 line ("verify both apps... return a hello-world"), asked Claude to replace the default Vite counter demo in `App.tsx` with a plain `<h1>Hello World</h1>`, matching the server's own plain-text hello world. It also deleted the now-unused template leftovers (`App.css`, logo assets, `public/icons.svg`, `.oxlintrc.json`, client's own generic `README.md`) and gave `index.html` a real title instead of `client`.
+
+Also noticed `client/.gitignore` existed while `server`/`shared` had none, and asked whether to fold it into the root one for consistency. Agreed, so Claude merged client's rules into the root `.gitignore`, dropped the now-redundant `client/node_modules`/`server/node_modules` lines (the bare `node_modules` pattern already covers any depth), and deleted `client/.gitignore`.
