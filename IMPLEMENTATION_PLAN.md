@@ -68,7 +68,9 @@ These come from the requirements and the ADR. Violating any one of them is a cor
     ├── package.json
     └── src/
         ├── main.tsx
-        ├── api/client.ts        # fetch wrapper, injects X-User-Id
+        ├── api/
+        │   ├── client.ts         # fetch wrapper, X-User-Id, ApiError parsing
+        │   └── useApiQuery.ts    # read-only hook: data/loading/error/refetch
         ├── context/CurrentUser.tsx
         ├── components/
         └── pages/
@@ -157,7 +159,7 @@ export function submitRequest(actor: User, id: string): ExpenseRequest {
 
 ---
 
-## Phase 1 — Shared contracts 
+## Phase 1 — Shared contracts
 
 - [x] `shared/types.ts`: `User`, `RequestValues`, `HistoryEvent` (discriminated union on `type`), `ExpenseRequest`, `Status`
 - [x] `shared/money.ts`: `dollarsToCents(input: string): number`, `centsToDisplay(cents: number): string`
@@ -385,10 +387,27 @@ Supertest against the full app. With the rules already unit-tested at the servic
   - `/requests/new` — create
   - `/requests/:id` — detail
 - [ ] `context/CurrentUser.tsx` — `CurrentUserProvider` holding the selected user; persist to `localStorage`
-- [ ] `api/client.ts` — fetch wrapper injecting `X-User-Id`; parses the error contract into `{ fieldErrors, message }`
+- [ ] `api/client.ts` — `fetch` wrapper; injects `X-User-Id` (read from
+  `localStorage`, the key the provider already persists to)
+  - [ ] `ApiError { status, code, message, fieldErrors? }` thrown on any non-2xx
+  - [ ] exports `api.get(path, signal?)`, `api.post(path, body?)`,
+    `api.patch(path, body)`
+- [ ] `api/useApiQuery.ts` — **reads only**, ~25 lines,
+  returns `{ data, loading, error, refetch }`
+  - [ ] deps `[path, currentUser.id, tick]` — the `currentUser.id` dep is what
+    makes "switching users refetches the page" true
+  - [ ] `AbortController` in the effect, `abort()` in cleanup, swallow
+    `AbortError` (superseded, not a failure)
+  - [ ] `path: string | null` so the form page can no-op in create mode
+  - [ ] no options bag, no cache, no dedupe, no retry
+- [ ] Mutations do **not** go through the hook — imperative `api.post` /
+  `api.patch` in click handlers, where in-flight state and `fieldErrors`
+  live (ADR §9)
+- [ ] `useApiQuery` stays in `client/` — it imports React and reads the
+  current-user context, so it is not `/shared` material
 - [ ] App header: user dropdown showing **name and role**, visible on every page; changing it refetches the current page
 
-**Verify:** switching users in the header changes the header label and survives a refresh.
+**Verify:** switching users in the header changes the header label, survives a refresh, and refetches the current page.
 **Commit:** `feat: app shell, current-user context, and api client`
 
 ---
@@ -416,18 +435,54 @@ The most intricate UI phase. Budget accordingly.
   - `client` select — appears when `billable` is checked
   - `additionalJustification` — appears when amount `>= $1,000`
   - `otherReason` — appears when type is `Other`
-- [ ] Amount input accepts dollars as text; converts via `shared/money.ts` on submit
-- [ ] Two actions: **Save Draft** (PATCH, no validation) and **Submit** (POST `/submit`)
+- [ ] Amount input holds a **dollar string** in local state; converts via
+  `shared/money.ts` **on every write — Save Draft included**, not only on submit
+  - [ ] Converting only on the submit path persists `"45.00"` into a field typed
+    `amountCents: number` and hands it back wrong on reload
+- [ ] Two actions: **Save Draft** (no validation) and **Submit**
 - [ ] Edit mode at `/requests/:id`: load existing values, block editing unless owner **and** Draft
 
+### Which write endpoint (create vs. edit mode)
+
+The form has one branch that everything else depends on: **does it hold an id yet?**
+
+- [ ] `POST /requests` — first write only, on `/requests/new`
+- [ ] `PATCH /requests/:id` — every write after that, for the rest of the session
+- [ ] As soon as `POST /requests` returns, store the id **and**
+  `navigate('/requests/' + id, { replace: true })`
+  - [ ] **Why this is not optional:** without it, a 400 from `/submit` leaves the
+    user on `/requests/new` holding no id. They fix the field, click Submit
+    again, and the retry fires a **second** `POST /requests` — an orphan draft
+    per failed attempt. Four seed records become eight during your own demo.
+
 ### Submit button behaviour (ADR §9)
+
+The order below is the order the code runs in. Don't reshuffle it — the API-call
+mechanics sit *after* the gate that decides whether any call happens at all.
+
+- [ ] Local state: `isSubmitting`, `fieldErrors`, `formError`
 - [ ] Button disabled **only while in flight**, never because the form is invalid
-- [ ] Click → client Zod validation → if invalid, show field errors, focus the first bad field, **don't call the API**, leave the button enabled
-- [ ] If valid → disable, POST, and on 400 render `fieldErrors` next to the right inputs and re-enable
-- [ ] On success → navigate to the detail page
-- [ ] Errors appear only after the first submit attempt, then re-validate on change
+- [ ] Click → client Zod validation
+- [ ] **Invalid** → render field errors inline, focus the first bad field,
+  **don't call the API**, button stays enabled
+- [ ] Errors appear only after the first submit attempt, then re-validate on
+  change so they clear as the user fixes them
+- [ ] **Valid** → `setIsSubmitting(true)` → persist values (`POST` or `PATCH`
+  per the branch above) → `POST /requests/:id/submit` (**no body**)
+- [ ] `catch`: `err instanceof ApiError && err.fieldErrors` → `setFieldErrors`;
+  otherwise `setFormError`. Re-enable the button either way (`finally`).
+- [ ] **Success** → navigate to the detail page
+
+> **Save and submit are two requests — deliberately.** Submit takes no body, so
+> values must be persisted first. That means a failed submit still persists them:
+> the draft keeps the newer values. This is the behaviour we want — the draft
+> *is* the user's work-in-progress, and discarding it over a missing conditional
+> field would be worse. The alternative (one `POST /submit` that accepts a body)
+> collapses the two calls at the cost of two different ways to write the same
+> fields. Name this in `NOTES.md` rather than "fixing" it. (ADR §9)
 
 **Verify:** a billable request with no client shows the error from the *server* if you bypass the client check.
+**Verify:** on `/requests/new`, trigger a server-side 400 on submit, fix the field, submit again — exactly **one** new request exists in the list afterwards.
 **Commit:** `feat: request form with conditional fields and validation`
 
 ---
@@ -437,8 +492,13 @@ The most intricate UI phase. Budget accordingly.
 - [ ] All fields rendered readably — dollars, human-readable type and status
 - [ ] History timeline: each event with action, **actor name** (resolved from the users list), and timestamp
 - [ ] Approve / Reject buttons — only when `currentUser.id === approverId` **and** status is `Submitted`
+- [ ] One local `decide(action: 'approve' | 'reject')` helper — the two calls are
+  identical apart from the path. Mirrors `decide(actor, id, ...)` in the
+  service layer; a pleasant symmetry to point at in the walkthrough.
+- [ ] Local `acting` boolean disables both buttons while either is in flight
+- [ ] On success call `refetch()` from `useApiQuery` — the history grows in place
+- [ ] Errors here render as a banner, not field errors — a 403/409 has no field
 - [ ] Edit button — only when `currentUser.id === requesterId` **and** status is `Draft`
-- [ ] Actions refetch the request on success
 - [ ] Show the assigned approver's name when Submitted
 
 **Verify:** open REQ-002 as Alice (no buttons), switch to Carol (buttons appear), approve, watch the history grow.
@@ -450,11 +510,17 @@ The most intricate UI phase. Budget accordingly.
 
 - [ ] Manual walkthrough: create as Alice → submit → switch to Carol → approve
 - [ ] Try to break it in the UI: submit empty, submit billable with no client, approve your own request
+- [ ] Fail a submit from `/requests/new`, fix, resubmit — confirm only **one**
+  request was created
+- [ ] Switch users rapidly on the detail page — nothing flickers to the wrong
+  data (the manual stand-in for a `useApiQuery` abort test; see the note at the
+  end of this document)
 - [ ] Remove `console.log`s; fix TypeScript errors; `npm test` fully green
 - [ ] Finish `NOTES.md`:
   - **Run instructions** — install + start for both apps
   - **Design choices** — routes/services/logic/store layering with no separate controller layer, and why; derived status; three pure functions; in-memory store as a swappable seam; allowlisted body fields; Declarative router; Context scoped to identity only
-  - **Tradeoffs** — no persistence (restart resets); not concurrency-safe; deriving status costs a read
+  - **Data fetching** — one ~25-line `useApiQuery` hook for the three read paths; writes are imperative `api.post` / `api.patch` calls in click handlers, because each has call-site-specific in-flight state, success behaviour, and error rendering. `AbortController` in the effect cleanup prevents a stale response landing after a user switch. No TanStack Query.
+  - **Tradeoffs** — no persistence (restart resets); not concurrency-safe; deriving status costs a read; save-and-submit are two requests, so a failed submit still persists the draft's values (deliberate — see ADR §9)
   - **What was tested** — lift the table from ADR §10; give the test count
   - **The two sentences worth having verbatim:**
     - *Client-side validation is a UX convenience only — deleting it entirely would leave the app fully correct, because the server returns the same `fieldErrors`.*
@@ -487,7 +553,7 @@ The most intricate UI phase. Budget accordingly.
 
 ---
 
-**If you're running long, cut in this order:** Playwright E2E (never started) → RTL component tests → status badge colours → the edit-mode branch of the form (create-only is defensible if noted). **Never cut:** Phase 3, Phase 7, Phase 9, or `NOTES.md`.
+**If you're running long, cut in this order:** Playwright E2E (never started) → RTL component tests → status badge colours → the edit-mode branch of the form (create-only is defensible if noted). **Never cut:** Phase 3, Phase 7, Phase 9, the `AbortController` cleanup in `useApiQuery`, or `NOTES.md`.
 
 ---
 
@@ -499,3 +565,14 @@ The most intricate UI phase. Budget accordingly.
 - [ ] The full lifecycle works end-to-end in the browser with user switching
 - [ ] `NOTES.md` answers: how to run, what you chose, what you traded away, what you tested, what's next, how AI was used
 - [ ] Commit history shows incremental work, not one squashed commit
+
+---
+
+## Deliberately untested
+
+`useApiQuery` gets no unit test. ADR §10 scopes RTL to a thin layer on the form —
+conditional field visibility and server `fieldErrors` rendering next to the right
+inputs. A hook test would need `renderHook` plus fetch mocking to assert
+behaviour that any component test rendering a list already exercises. The abort
+path is covered by the manual check in Phase 14: switch users rapidly on the
+detail page and confirm nothing flickers to the wrong data.

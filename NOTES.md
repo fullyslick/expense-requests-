@@ -50,6 +50,15 @@ Verified: npm install, npm test (1 passing), and npm run dev:server (curl'd loca
 One thing to note for later: the current eslint.config.js only sets globals.browser and pulls in React-specific plugins, so it's not really linting server/src correctly yet (no    
 Node globals). Worth adding a server/** override with globals.node and no React plugins when you're ready — didn't do it now since it wasn't asked for.
 ```
+# Design Choices
+
+**Data fetching** — one ~25-line `useApiQuery` hook for the three read
+  paths; writes are imperative `api.post` / `api.patch` calls in click
+  handlers, because each has call-site-specific in-flight state, success
+  behaviour, and error rendering — a generic mutation hook would only hide
+  those differences. `AbortController` in the effect cleanup prevents a stale
+  response landing after a user switch. No TanStack Query: caching and
+  revalidation buy nothing over four-to-twenty records fetched per page.
 
 # Defining Core Data Types
 I have defined the types manually with few small refinements from Claude and at the end I asked it to verify them against the ADR and Implementation plan.

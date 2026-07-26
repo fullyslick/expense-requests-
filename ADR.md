@@ -51,6 +51,7 @@ All choices are drawn from the declared stack.
 | Frontend | Vite + React + TS | Fast dev loop, no framework opinions to fight | Next.js — SSR buys nothing for an internal tool behind a user picker |
 | Routing | React Router, **Declarative mode** | Three routes; keeps Express as the only server in the repo (see §8) | Framework mode — runs its own server, competing with the one being graded |
 | Client state | Context API (current user) + local component state | The only genuinely global state is "who am I pretending to be" (see §8) | Redux Toolkit / Zustand — no shared mutable client state to justify them |
+| Data fetching | Hand-written fetch wrapper + one useApiQuery hook | Three read paths and three write paths; the wrapper owns headers and error parsing, the hook owns the read lifecycle | TanStack Query / SWR — caching, dedupe, and revalidation buy nothing over four-to-twenty records refetched per page, and neither is on the declared stack | 
 | Styling / UI | Tailwind + shadcn **primitives only** | Radix under shadcn gives keyboard nav and ARIA on Select/Checkbox/Dialog for free; ~10 min setup | `shadcn/form` — pulls in react-hook-form; avoided on purpose (see §8) |
 | Validation | **Zod** (decided) | Explicitly permitted by the FAQ; one schema expresses base + conditional rules, runs on both sides, and `flatten().fieldErrors` maps straight onto the API error shape | Hand-rolled validator — viable and dependency-free, but `superRefine` handles the three conditionals more legibly |
 | Testing | Jest + Supertest (server), React Testing Library (client), Playwright (optional 1 flow) | Jest for the pure logic, Supertest for the "someone calls the API directly" tests | — |
@@ -125,6 +126,25 @@ This is *not* event sourcing. It's a four-case reducer over a short array.
 It occupies the same architectural slot a JWT would: middleware reads a credential off the request, resolves it to a `User`, attaches `req.currentUser`, or returns 401. The only difference is trust — a JWT is signed so the server can verify it wasn't forged; a plain header is trivially spoofable with `curl`. That's acceptable and explicitly permitted here, and the *shape* being right is what matters: swapping in real auth later means rewriting the body of one middleware function and nothing else.
 
 Worth stating explicitly in the walkthrough: **authentication is fake, authorization is real.** Owner-only edits and approver-only approvals are all checked against `req.currentUser.id` on the server.
+
+### The client's API layer
+
+`api/client.ts` is a thin `fetch` wrapper — not a package. It owns exactly what
+is identical across every call: base URL, `Content-Type`, the `X-User-Id`
+header, `res.ok` checking, and parsing the error contract above into a typed
+`ApiError { status, code, message, fieldErrors? }`. It exports
+`api.get / api.post / api.patch`.
+
+`ApiError` carrying `fieldErrors` is what keeps the form's submit handler short:
+one `instanceof` check distinguishes a validation failure (render next to the
+inputs) from anything else (banner).
+
+**Where the header value comes from:** `client.ts` is not a component, so it
+cannot call `useContext`. The current user id is read from `localStorage` — the
+same key `CurrentUserProvider` already persists to (§8). A module-level variable
+written by the provider is the more "real token client" alternative; both are two
+lines. What is deliberately avoided is threading `userId` as a parameter through
+every call site — that pollutes fifteen places to solve a problem in one.
 
 ### Mass assignment — why the client can't set `status`, `requesterId`, or `approverId`
 
@@ -272,6 +292,43 @@ The only genuinely global *client* state in this app is "who am I acting as." Th
 
 That's the line to draw out loud in the demo: **Context for ambient identity, not as a general state store.** It's also why Redux and Zustand appear on the stack list but not in this design — there is no shared mutable client state to justify either.
 
+### Reads are declarative, writes are imperative
+
+Two different shapes, deliberately not unified:
+
+- **Reads** — "this page needs this data, keep it in sync with who I am." The
+  trigger is rendering and the dependency array does the work. One
+  `useApiQuery(path)` hook covers all three: `GET /requests`,
+  `GET /requests/:id`, `GET /users`. Returns `{ data, loading, error, refetch }`.
+- **Writes** — "on click, do this, then that, and handle these failure modes
+  differently." The trigger is an event; the error handling is call-site
+  specific. These stay as imperative `api.post` / `api.patch` calls inside
+  handlers.
+
+Three mutation call sites, each with different post-success behaviour (navigate
+vs. refetch) and different error rendering — `fieldErrors` next to inputs on the
+form, a message banner on the detail page. A generic `useMutation` would take
+the five decisions in §9 and bury them behind config. There is nothing to factor
+out but the `fetch` boilerplate, and `api.post` / `api.patch` already did that.
+
+**Inside the hook, three things earn their place:**
+
+- `currentUser.id` in the deps — this *is* the implementation of "switching
+  users refetches the current page."
+- `refetch` — the detail page needs it: approve → refetch → history grows.
+- `path: string | null` — lets the form page call the hook unconditionally and
+  pass `null` in create mode, rather than conditionally calling a hook.
+
+**`AbortController` in the effect cleanup.** Switching users fires a refetch;
+flipping Alice → Carol → Alice quickly can land responses out of order, leaving
+the page rendering Carol's data under Alice's header. A `let cancelled` closure
+flag fixes the same bug in two fewer lines; `AbortController` additionally
+cancels the in-flight request, and "the cleanup aborts it" is a cleaner answer
+to a reviewer than "a closure variable guards the setState."
+
+**Explicitly not in the hook:** no options bag (`{ method, body, deps, enabled,
+transform }` is a library with one user), no cache, no dedupe, no retry.
+
 ### Switching users
 
 A **persistent dropdown in the app header, visible on every page**. Selecting a different user immediately changes the `X-User-Id` the API client sends, and the current page refetches. No login page, no logout — switching is instant.
@@ -328,11 +385,21 @@ The flow:
 1. Button enabled whenever `!isSubmitting`.
 2. Click → run client-side Zod validation.
 3. **Invalid** → render field errors inline, focus the first bad field, **don't call the API**, button stays enabled so the user can fix and retry.
-4. **Valid** → `setIsSubmitting(true)`, disable button + spinner, POST to `/submit`.
+4. **Valid** → `setIsSubmitting(true)`, disable button + spinner, **persist the values** (`POST /requests` in create mode, `PATCH /requests/:id` in edit mode), then `POST /requests/:id/submit`.
 5. **Server returns 400 + `fieldErrors`** → render those errors, re-enable the button.
 6. **Server returns 200** → navigate to the detail page.
 
 Refinement: don't show errors until the first submit attempt, then re-validate on change so they clear as the user fixes them. Validating on every keystroke from an empty form is noisy and hostile.
+
+### Save and submit are two requests
+
+`POST /requests/:id/submit` takes no body, so the form must persist its values before submitting. That's a deliberate consequence of the API shape in §6, and it has two visible effects worth being able to defend.
+
+**A failed submit still persists the values.** PATCH succeeds, `/submit` returns 400, and the draft now holds the newer values. This is the behaviour we want — the draft *is* the user's work-in-progress, and discarding it because a conditional field was missing would be worse than keeping it. The alternative, a single `POST /submit` that accepts a body, collapses the two calls at the cost of giving PATCH and submit two different ways to write the same fields; the split keeps "save" and "submit" as one job each.
+
+**Create mode must claim its id before submitting.** The first write on `/requests/new` is `POST /requests`, not PATCH. As soon as it returns, the form holds an id and replaces the URL with `/requests/:id` — *before* calling `/submit`. Without that, a 400 from `/submit` leaves the user on `/requests/new` holding no id, and the obvious retry creates a second orphan draft. Every write after the first one in a session is a PATCH.
+
+**Dollars convert to cents on every write, not just on submit.** The amount input holds a dollar string in local state; `dollarsToCents` runs on the way out of both Save Draft and Submit. Converting only on the submit path would persist `"45.00"` into a field typed `amountCents: number` and hand it back wrong on reload.
 
 For `NOTES.md`:
 
@@ -385,4 +452,4 @@ The assignment asks for a GitHub repo with run steps in `NOTES.md`, not a live U
 - No persistence: a server restart resets everything. Acceptable and explicitly allowed; mention in `NOTES.md`.
 - In-memory mutation is not concurrency-safe. Single-user demo makes this moot; worth naming as a known limitation.
 - Deriving status on every read is O(events) — irrelevant at this scale, would be revisited with pagination or a real datastore.
-- Declarative routing means manual fetch/pending handling in `useEffect`. Accepted; the app is small enough that it stays tidy.
+- Declarative routing means manual fetch/pending handling. A single ~25-line useApiQuery hook absorbs it for the three read paths; mutations stay explicit by design (§8). Accepted — the app is small enough that it stays tidy, and the hook is what makes that true rather than aspirational.
