@@ -22,6 +22,7 @@ npm run dev:client     # Vite dev server, http://localhost:5173
 npm test               # all three workspaces
 npm run lint           # eslint, whole repo
 npm run format         # prettier --write, whole repo
+                       # ⚠️  only run when intentionally formatting — will modify all unformatted files
 ```
 
 Per-workspace and single tests:
@@ -131,3 +132,4 @@ invalidity — don't match the mockup if it shows otherwise.
 - **Tests own their state.** The store is a module-level `Map` shared across every test in a file and is not reset between tests. Build fixtures through `createDraft`/`submitRequest` rather than mutating seed rows (`REQ-001`…`REQ-004`), so test order never matters.
 - **Commit messages** are short and imperative, no conventional-commit prefixes: `Add createDraft`, `Mount auth on /api/* and add GET /api/users`.
 - `server/data/*.json` is pristine seed data, read at boot and never written back to.
+
