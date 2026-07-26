@@ -101,8 +101,13 @@ The `@/*` alias maps to `client/src/*` and must stay declared in **both** `clien
 
 ## Design validation
 
-Reference mockups live in .claude/design/mockups/ (list-page.html, request-form.html,
-detail-page-and-history.html, app-header). After finishing each frontend page (Phase 11–13 in
+Mockups are served alongside the client dev server at:
+http://localhost:5173/design-mockups/list-page.html
+http://localhost:5173/design-mockups/request-form.html
+http://localhost:5173/design-mockups/detail-page-and-history.html
+http://localhost:5173/design-mockups/app-header.html
+(copied from /design/mockups — run `npm run dev:client` first).
+After finishing each frontend page (Phase 11–13 in
 IMPLEMENTATION_PLAN.md), do a validation pass using Chrome (run `/chrome`
 first if not already connected):
 
