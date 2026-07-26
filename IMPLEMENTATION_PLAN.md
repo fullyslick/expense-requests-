@@ -387,10 +387,10 @@ Supertest against the full app. With the rules already unit-tested at the servic
   - `/requests/new` — create
   - `/requests/:id` — detail
 - [x] `context/CurrentUser.tsx` — `CurrentUserProvider` holding the selected user; persist to `localStorage`
-- [ ] `api/client.ts` — `fetch` wrapper; injects `X-User-Id` (read from
+- [x] `api/client.ts` — `fetch` wrapper; injects `X-User-Id` (read from
   `localStorage`, the key the provider already persists to)
-  - [ ] `ApiError { status, code, message, fieldErrors? }` thrown on any non-2xx
-  - [ ] exports `api.get(path, signal?)`, `api.post(path, body?)`,
+  - [x] `ApiError { status, code, message, fieldErrors? }` thrown on any non-2xx
+  - [x] exports `api.get(path, signal?)`, `api.post(path, body?)`,
     `api.patch(path, body)`
 - [ ] `api/useApiQuery.ts` — **reads only**, ~25 lines,
   returns `{ data, loading, error, refetch }`

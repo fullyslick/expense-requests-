@@ -1,10 +1,8 @@
 import { createContext, useContext, useState } from 'react';
 
+import { setCurrentUserId } from '@/api/client';
 import type { User } from 'shared/types';
 
-// api/client.ts (Phase 10, next) reads the user id straight off this same
-// key for the X-User-Id header — it can't call useContext (it isn't a
-// component), so localStorage is the shared channel between the two.
 export const CURRENT_USER_STORAGE_KEY = 'currentUser';
 
 type CurrentUserContextValue = {
@@ -28,10 +26,15 @@ function readStoredUser(): User | null {
 }
 
 export function CurrentUserProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUserState] = useState<User | null>(readStoredUser);
+  const [currentUser, setCurrentUserState] = useState<User | null>(() => {
+    const user = readStoredUser();
+    setCurrentUserId(user?.id ?? null);
+    return user;
+  });
 
   function setCurrentUser(user: User) {
     localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(user));
+    setCurrentUserId(user.id);
     setCurrentUserState(user);
   }
 

@@ -5,6 +5,7 @@ import { auth } from './middleware/auth';
 import { errorHandler } from './middleware/errorHandler';
 import requestsRouter from './routes/requests';
 import usersRouter from './routes/users';
+import { API_PREFIX, SERVER_PORT } from 'shared/constants';
 
 const app = express();
 
@@ -15,17 +16,15 @@ app.get('/', (_req, res) => {
   res.send('hello world');
 });
 
-app.use('/api', auth);
-app.use('/api/users', usersRouter);
-app.use('/api/requests', requestsRouter);
+app.use(API_PREFIX, auth);
+app.use(`${API_PREFIX}/users`, usersRouter);
+app.use(`${API_PREFIX}/requests`, requestsRouter);
 
 app.use(errorHandler);
 
-const PORT = 4000;
-
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`server listening on port ${PORT}`);
+  app.listen(SERVER_PORT, () => {
+    console.log(`server listening on port ${SERVER_PORT}`);
   });
 }
 
