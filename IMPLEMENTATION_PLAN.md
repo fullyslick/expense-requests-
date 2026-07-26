@@ -430,8 +430,8 @@ Supertest against the full app. With the rules already unit-tested at the servic
 
 The most intricate UI phase. Budget accordingly.
 
-- [ ] Base fields: expense type select, amount input, description textarea, billable checkbox
-- [ ] **Conditional visibility**, hand-wired from local state:
+- [x] Base fields: expense type select, amount input, description textarea, billable checkbox
+- [x] **Conditional visibility**, hand-wired from local state:
   - `client` select — appears when `billable` is checked
   - `additionalJustification` — appears when amount `>= $1,000`
   - `otherReason` — appears when type is `Other`

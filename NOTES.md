@@ -338,3 +338,35 @@ One deviation I want on the record rather than buried: **the mockup has no visib
 Verified the phase's own check — all four seed rows render with the right derived statuses (REQ-001 Draft, REQ-002 Submitted, REQ-003 Approved, REQ-004 Draft) — and confirmed the error state end-to-end by pointing the client at a nonexistent user id, which surfaced the server's real "Missing or unknown X-User-Id" message through `ApiError` rather than a generic string. `npm test` (171), `eslint`, and both `tsc` passes all clean.
 
 No seed request is ever in the `Rejected` state, so the red badge only gets exercised by the unit test, not by the live app. Something to keep in mind when demoing.
+
+# Phase 12 — request form, fields and conditional visibility only
+
+Started Phase 12 narrowly on purpose: base fields, the three conditional-visibility rules, and nothing else — no Save Draft/Submit wiring, no client validation, no write endpoints. Those are separate checkboxes further down the same phase and are pure wiring; shipping two dead buttons ahead of them would have been worse than leaving the card end where it ends.
+
+`RequestForm` holds one `values` object in local state with a typed `setField<K extends keyof FormValues>` setter rather than seven separate `useState` calls. The three visibility booleans — `showOtherReason`, `showAdditionalJustification`, `showClient` — are written to read like `shared/validation.ts`'s `superRefine`, deliberately, so the client-side echo of each server rule is easy to eyeball against the rule it mirrors. They're visibility only; the server still enforces all three at submit time.
+
+`amount` is a dollar string in state, not cents, per the plan's explicit callout that converting only on submit persists a stale value on reload. The wrinkle: `dollarsToCents` **throws** on anything half-typed (`"12."`, `"1500."`), and the $1,000 visibility check has to run on every keystroke, not just on a clean value. Wrapped it in `amountInCents()`, which catches and returns `null` — an unparseable amount just hasn't crossed the threshold yet. Without that guard the page white-screens mid-type, which is a worse failure mode than briefly hiding a field.
+
+Validated the conditional fields live in Chrome, checking the boundary explicitly rather than trusting a round number in the middle: `999.99` (99999 cents) hides Extra Justification, `1000.00` (100000 cents) shows it — guardrail #2's own instruction. Billable → Client and type-Other → Other-reason both worked and both retract cleanly when un-toggled.
+
+Field order and copy came from `design-mockups/request-form.html`'s DOM, read directly since the mockup renders into a bundled shadow structure that doesn't screenshot its hidden conditional fields — reading the raw labels/placeholders was more reliable than guessing from the rendered screenshot alone. One deliberate deviation from the mockup: the Client dropdown uses `shared/types.ts`'s `CLIENTS` (Acme, Globex, Initech, Contoso), not the mockup's own list (Acme Corp, Globex, Initech, Umbrella Inc). CLAUDE.md is explicit that the spec wins when the two disagree, and these values round-trip through `z.enum(CLIENTS)` on the server — the mockup's strings would 400.
+
+## Accessibility gap: labels weren't bound to their controls
+
+Flagged this myself once the fields existed: every field rendered a plain `<Label>` with no `htmlFor`, so nothing was programmatically associated — `getByLabelText` had nothing to bind to, and a screen reader would announce controls with no name. First fix wrapped the pattern in a `Field` component that generated an id via `useId()` and handed it to the control through a render prop (`children: (id: string) => ReactNode`), since the id has to reach whichever concrete control (`Input`, `Textarea`, `Select`) actually gets rendered inside.
+
+Working, but the user pushed back on the complexity: no need for a component or `useId()`'s indirection when the ids are static and known up front. Replaced `Field` with a flat `<div className={FIELD_CLASS}>` at each call site, `FIELD_CLASS` holding the once-shared `"flex flex-col gap-2"` string, and literal ids (`amount`, `description`, `billable`, etc.) instead of generated ones. Net effect: same markup, no abstraction, no hook — a plain string constant does the only job `Field` was doing that was worth keeping. The 7 label-querying tests written against the `Field` version kept passing untouched against the flat version, which is exactly the point of testing through the label/role contract instead of the implementation.
+
+Chased two base-ui quirks while getting the tests to actually exercise the label binding rather than passing by accident:
+
+- **jsdom has no `PointerEvent`**, and both the Checkbox and Select primitives construct one on click. Every interaction threw until `setupTests.ts` got a minimal `PointerEvent` polyfill plus `hasPointerCapture`/`setPointerCapture`/`scrollIntoView`/`ResizeObserver` stubs. This isn't specific to this form — it'll block any base-ui interaction test, including whatever Phase 13's approve/reject buttons need.
+- **Base UI commits a Select choice on the full pointer sequence, not a bare `click`.** `fireEvent.click(option)` alone opens the popup and silently leaves the value unchanged — the assertion fails, but in a way that's easy to misread as "the option didn't render" rather than "the click didn't land." The test helper fires `pointerDown` → `pointerUp` → `click` in sequence to match what a real pointer does.
+- **The Checkbox renders two elements**: a visible `<span role="checkbox">` wired via `aria-labelledby`, and an `aria-hidden` native `<input>` carrying the actual `id`/`htmlFor` for form semantics. A `getByLabelText` query matches both and throws "found multiple elements" — not a bug, just two elements sharing one accessible name. Queried it by role instead (`getByRole('checkbox', { name: ... })`), which skips the hidden node and asserts the accessible name in one call.
+
+Confirmed the fix against the real browser, not just jsdom: every label click focuses its paired control, each control's `labels.length === 1`, and clicking the "Billable to a client?" text itself toggles the checkbox and retracts the Client field — which wasn't reliably true before `htmlFor` existed.
+
+## Unit tests for conditional visibility
+
+Seven tests in `RequestForm.test.tsx`, each conditional exercised in **both directions** (appearing and retracting), plus one boundary test and one "don't crash on garbage input" test. Ran a mutation check before trusting them: flipped `cents >= THOUSAND_DOLLARS_IN_CENTS` to `>` and only the boundary test failed — confirms it actually pins the off-by-one guardrail #2 warns about, rather than passing by coincidence.
+
+`npm test` sits at 178 (23 client / 155 across the other two workspaces), `eslint`, `tsc -b` on both workspaces, and prettier are all clean. Ticked the two Phase 12 checkboxes this covers — base fields and conditional visibility — and left the rest of the phase (write endpoints, submit behaviour, edit mode) unticked; wiring is next.
