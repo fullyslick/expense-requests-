@@ -95,10 +95,12 @@ export default function RequestDetail() {
     setActionError(null);
     try {
       await api.post(`/requests/${id}/${action}`);
-      refetch();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
+      // A failure here is usually a stale read — someone else already decided
+      // it, or the status moved — so the record is worth refetching either way.
+      refetch();
       setActing(false);
     }
   }
@@ -203,12 +205,16 @@ export default function RequestDetail() {
           )}
 
           <Detail label="Description" wide>
-            <span className="leading-relaxed text-neutral-700">{data.values.description || EMPTY}</span>
+            <span className="leading-relaxed text-neutral-700">
+              {data.values.description || EMPTY}
+            </span>
           </Detail>
 
           {data.values.additionalJustification && (
             <Detail label="Extra Justification" wide>
-              <span className="leading-relaxed text-neutral-700">{data.values.additionalJustification}</span>
+              <span className="leading-relaxed text-neutral-700">
+                {data.values.additionalJustification}
+              </span>
             </Detail>
           )}
         </dl>

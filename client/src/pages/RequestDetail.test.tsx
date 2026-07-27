@@ -199,7 +199,17 @@ describe('RequestDetail', () => {
 
     expect(await screen.findByText('Request is not Submitted')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Approve' })).not.toBeDisabled();
-    expect(refetch).not.toHaveBeenCalled();
+  });
+
+  // A 409 here almost always means someone else already decided it — the
+  // stale copy on screen is worth refreshing even though the action failed.
+  it('refetches after a failed decision too, since the failure means the copy on screen is stale', async () => {
+    post.mockRejectedValue(new ApiError(409, 'INVALID_STATUS', 'Request is not Submitted'));
+    renderDetail({ data: requestFixture() });
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await screen.findByText('Request is not Submitted');
+    expect(refetch).toHaveBeenCalled();
   });
 
   it('shows Edit only to the requester of a Draft', () => {
