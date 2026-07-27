@@ -12,10 +12,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/', (_req, res) => {
-  res.send('hello world');
-});
-
 app.use(API_PREFIX, auth);
 app.use(`${API_PREFIX}/users`, usersRouter);
 app.use(`${API_PREFIX}/requests`, requestsRouter);

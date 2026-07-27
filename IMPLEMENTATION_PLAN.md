@@ -400,7 +400,7 @@ Supertest against the full app. With the rules already unit-tested at the servic
     `AbortError` (superseded, not a failure)
   - [x] `path: string | null` so the form page can no-op in create mode
   - [x] no options bag, no cache, no dedupe, no retry
-- [ ] Mutations do **not** go through the hook — imperative `api.post` /
+- [x] Mutations do **not** go through the hook — imperative `api.post` /
   `api.patch` in click handlers, where in-flight state and `fieldErrors`
   live (ADR §9)
 - [x] `useApiQuery` stays in `client/` — it imports React and reads the
@@ -515,7 +515,7 @@ mechanics sit *after* the gate that decides whether any call happens at all.
 - [ ] Switch users rapidly on the detail page — nothing flickers to the wrong
   data (the manual stand-in for a `useApiQuery` abort test; see the note at the
   end of this document)
-- [ ] Remove `console.log`s; fix TypeScript errors; `npm test` fully green
+- [x] Remove `console.log`s; fix TypeScript errors; `npm test` fully green
 - [ ] Finish `NOTES.md`:
   - **Run instructions** — install + start for both apps
   - **Design choices** — routes/services/logic/store layering with no separate controller layer, and why; derived status; three pure functions; in-memory store as a swappable seam; allowlisted body fields; Declarative router; Context scoped to identity only

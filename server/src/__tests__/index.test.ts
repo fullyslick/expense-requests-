@@ -1,15 +1,9 @@
 import request from 'supertest';
 import app from '../index';
 
-describe('GET /', () => {
-  it('returns hello world', async () => {
-    const res = await request(app).get('/');
-    expect(res.status).toBe(200);
-    expect(res.text).toBe('hello world');
-  });
-
+describe('CORS', () => {
   it('sets a CORS header', async () => {
-    const res = await request(app).get('/');
+    const res = await request(app).get('/api/users');
     expect(res.headers['access-control-allow-origin']).toBe('*');
   });
 });
