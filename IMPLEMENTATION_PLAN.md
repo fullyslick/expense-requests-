@@ -489,17 +489,17 @@ mechanics sit *after* the gate that decides whether any call happens at all.
 
 ## Phase 13 — Detail page and history
 
-- [ ] All fields rendered readably — dollars, human-readable type and status
-- [ ] History timeline: each event with action, **actor name** (resolved from the users list), and timestamp
-- [ ] Approve / Reject buttons — only when `currentUser.id === approverId` **and** status is `Submitted`
-- [ ] One local `decide(action: 'approve' | 'reject')` helper — the two calls are
+- [x] All fields rendered readably — dollars, human-readable type and status
+- [x] History timeline: each event with action, **actor name** (resolved from the users list), and timestamp
+- [x] Approve / Reject buttons — only when `currentUser.id === approverId` **and** status is `Submitted`
+- [x] One local `decide(action: 'approve' | 'reject')` helper — the two calls are
   identical apart from the path. Mirrors `decide(actor, id, ...)` in the
   service layer; a pleasant symmetry to point at in the walkthrough.
-- [ ] Local `acting` boolean disables both buttons while either is in flight
-- [ ] On success call `refetch()` from `useApiQuery` — the history grows in place
-- [ ] Errors here render as a banner, not field errors — a 403/409 has no field
-- [ ] Edit button — only when `currentUser.id === requesterId` **and** status is `Draft`
-- [ ] Show the assigned approver's name when Submitted
+- [x] Local `acting` boolean disables both buttons while either is in flight
+- [x] On success call `refetch()` from `useApiQuery` — the history grows in place
+- [x] Errors here render as a banner, not field errors — a 403/409 has no field
+- [x] Edit button — only when `currentUser.id === requesterId` **and** status is `Draft`
+- [x] Show the assigned approver's name when Submitted
 
 **Verify:** open REQ-002 as Alice (no buttons), switch to Carol (buttons appear), approve, watch the history grow.
 **Commit:** `feat: detail page with history timeline and approver actions`

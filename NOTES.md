@@ -411,3 +411,30 @@ Plus: an invalid submit makes no API call at all (request count unchanged), focu
 One deliberate non-fix: a conditional field that becomes hidden keeps whatever was last persisted, because PATCH merges. Dropping the amount below $1,000 leaves the old `additionalJustification` on the record. Nothing validates against it, and it means raising the amount again doesn't lose the text — but it's a choice, not an oversight.
 
 `npm test` is at 185 (30 client / 127 server / 31 shared — 7 new submit-flow tests and 3 new money tests), with `eslint`, `tsc` on both workspaces, and prettier clean.
+
+# Phase 13 — detail page, history timeline, and the two decisions
+
+The read-only counterpart to the form. Everything on it is a projection of what the API already returns: `toResponse()` hands back `status`, `approverId` and `requesterName` as derived fields, so the page never re-derives anything — it formats and gates.
+
+Two `useApiQuery` calls: the request itself, and `/users`. The second exists only to turn `event.actorId` into a name, because the response joins the *requester's* name but not each actor's. Considered making the server resolve actor names inside `events` and rejected it — `events` is the stored shape, and stuffing a display field into it would put a serialize-time concern inside the record itself. Resolving ids to names is the client's job here, and unknown ids fall back to the raw id rather than rendering blank.
+
+`decide('approve' | 'reject')` is one helper because the two calls differ only in the last path segment — the same symmetry the service layer has. One `acting` boolean disables both buttons, so you can't fire an approve and a reject at the same request in parallel.
+
+Errors from a decision are a banner, not field errors: a 403 or a 409 has no field to attach to. Verified that for real rather than trusting the unit test. Submitted REQ-001 as Alice by curl, loaded it as Carol, approved it out-of-band with a second curl so the open page was stale, then clicked Approve. The server answered 409 and the page showed `Request must be Submitted, but is Approved` in the banner with both buttons re-enabled. Worth noting the page stays stale after that failure — the plan says `refetch()` on success, and I kept it that way, but a failed decision arguably deserves a refetch too since a 409 *means* the client's copy is out of date. Left as specified; it's a one-line change if it ever bothers anyone.
+
+## One thing that isn't the obvious code
+
+The loading gate keys on `data`, not on `loading`. `refetch()` after an approval sets `loading` true for the duration of the round-trip, so gating on it would blank the whole page back to "Loading request..." and then re-render — the opposite of "the history grows in place". Keying on `data` keeps the previous record on screen until the new one lands. `currentUser` is in the same gate for the reason Phase 12 already hit: it's null until the header hydrates it, and running `currentUser.id === approverId` against that window hides the buttons from the person they belong to.
+
+## Design pass
+
+Compared the live page against `design-mockups/detail-page-and-history.html` in Chrome, in all three of the mockup's demo states. Two deliberate deviations, both toward internal consistency rather than the mockup:
+
+- The mockup's `<h1>` is 22px; mine is `text-xl` (20px), matching the form page's heading.
+- Card corners are `rounded-lg` (10px) rather than the mockup's 8px, matching the list page's cards.
+
+One real mismatch, now fixed: description and extra justification were rendering in `text-muted-foreground`, noticeably lighter than the mockup's `#404040`. They're `text-neutral-700` now. The mockup deliberately makes the long-form text softer than the headings but darker than the labels, and muted-foreground overshot that.
+
+Also confirmed the whole Verify line end to end: REQ-002 as Trent shows no buttons, switching to Carol in the header makes Approve/Reject appear in place with no navigation, approving flips the badge to Approved, drops the Assigned Approver field, removes the buttons, and grows the timeline by a third entry — `Approved by Carol`, with today's timestamp. The Edit button shows on REQ-001 for Alice and links to `/requests/REQ-001/edit`; it's absent on REQ-004, which is Mallory's draft.
+
+18 new component tests (`RequestDetail.test.tsx`), covering both gates in both directions, the decision paths, the in-flight disable, the banner, and the actor-name fallback. `npm test` is at 206 (48 client / 127 server / 31 shared); `eslint`, `tsc -b`, and prettier are clean.

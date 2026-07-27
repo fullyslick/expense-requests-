@@ -6,8 +6,18 @@ const DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
+const TIME_FORMAT = new Intl.DateTimeFormat('en-US', {
+  hour: 'numeric',
+  minute: '2-digit',
+});
+
 export function formatDate(iso: string): string {
   return DATE_FORMAT.format(new Date(iso));
+}
+
+export function formatDateTime(iso: string): string {
+  const date = new Date(iso);
+  return `${DATE_FORMAT.format(date)} · ${TIME_FORMAT.format(date)}`;
 }
 
 export function createdAt(events: HistoryEvent[]): string | null {
