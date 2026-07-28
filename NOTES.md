@@ -13,6 +13,82 @@ The API needs an `X-User-Id` header on every request (fake auth — see ADR §6)
 
 ---
 
+# Design Choices
+
+Everything below is argued out at length in `ADR.md`. This is the short version, in one place, because the rest of this document is a chronological journal and the decisions are otherwise scattered across it.
+
+- **Four layers, and deliberately no controller layer.** `routes/ → services/ → logic/ → store.ts`, strictly one-directional. Express route callbacks *are* controllers, so a separate controller layer would have been a file of three-line pass-throughs. Handlers stay one line each; every authorization rule in the system lives in `requests.service.ts`, so "where is this enforced?" has a one-file answer. Services never see `req`/`res` — they throw typed errors, and `middleware/errorHandler.ts` is the only place an error turns into an HTTP response. What I resisted: a repository interface over the store, a DI container, a `BaseController`, a `services/` subfolder per entity. Eight endpoints don't justify any of it.
+
+- **Status is derived, never stored.** Storage holds `{ id, requesterId, values, events }` and nothing else. `deriveStatus(events)` maps the last event's type to a `Status`; `getApproverId(events)` scans backward for the most recent `submitted`. Requirement 6 says the status must always match the latest action — a stored field means remembering to update it in four handlers, and forgetting once is a silent bug. Deriving makes the requirement true by construction instead of by discipline.
+
+- **Three pure functions carry the business logic.** `requestValuesSchema` (field shape plus the three conditional rules), `deriveStatus()`, and `pickApprover()`. None of them import Express, the store, or React, so each is exercised by a plain function call with no HTTP and no rendering involved. This is the architectural bet the whole thing rests on: the pieces most likely to be wrong are the pieces with the fewest dependencies.
+
+- **The in-memory store is a swappable seam.** `store.ts` owns the `Map`s and exposes `list`/`getById`/`save`; nothing above it knows the data lives in memory. Replacing it with a real datastore is a rewrite of one file, not a refactor of the service layer — which is the only reason "no database" is a defensible answer rather than a corner painted into.
+
+- **Body fields come off an allowlist.** `pickValues(body)` copies only the seven known `RequestValues` keys, so a client stuffing `status`/`requesterId`/`approverId` into a POST or PATCH gets those silently dropped. It's typed `Record<keyof RequestValues, true>`, so adding a field to `RequestValues` fails to compile until the allowlist is updated too. `requesterId` comes from `req.currentUser.id`; `approverId` is computed by `pickApprover()` at submit time. Never from the body.
+
+- **React Router in Declarative mode.** `BrowserRouter` + `Routes`, not Data or Framework mode. Framework mode runs its own server, which would put a second server in a repo whose Express API is the thing being graded. Three routes don't need loaders.
+
+- **Context is scoped to identity only.** The one piece of genuinely global client state is "who am I pretending to be"; everything else is local component state. No Redux, no Zustand — there's no shared mutable client state for them to manage. The user picker lives in the header rather than on a login page specifically so you can sit on a request's detail page, switch from Alice to Carol, and watch Approve/Reject appear in place.
+
+- **Data fetching: one read hook, imperative writes.** One ~25-line `useApiQuery` hook covers the three read paths; writes are imperative `api.post` / `api.patch` calls in click handlers, because each has call-site-specific in-flight state, success behaviour, and error rendering — a generic mutation hook would only hide those differences. `AbortController` in the effect cleanup prevents a stale response landing after a user switch. No TanStack Query: caching and revalidation buy nothing over four-to-twenty records fetched per page.
+
+Two things worth stating plainly:
+
+> Client-side validation is a UX convenience only — deleting it entirely would leave the app fully correct, because the server returns the same `fieldErrors`.
+
+> Zod validates field shape and the three conditional rules; approver routing and status transitions are hand-written, per the no-workflow-engine constraint.
+
+---
+
+# Tradeoffs
+
+Each of these is a choice, not an oversight.
+
+| What I gave up | Why it's acceptable here | What fixing it would take |
+|---|---|---|
+| **No persistence.** The store is `Map`s seeded from JSON at boot. A restart resets to the four seed records, and anything created during a session is gone. | Explicitly permitted by the brief, and it keeps setup at `npm install`. The seed files in `server/data/` are read-only — nothing writes back to disk, so the fixtures can't rot mid-demo. | Swap `store.ts` for a real datastore. Nothing above that file changes, which is the point of the seam. |
+| **Not concurrency-safe.** Every write is a read-modify-write against a shared `Map` with no locking or version check. Two approvals landing at the same instant could interleave, and the second would win silently. | Single Node process, single demo user at a time. `MANUAL_TEST_PLAN.md` names this in its own "deliberately doesn't cover" section rather than pretending otherwise. | Optimistic concurrency — an event count or version on the record, rejected with a 409 if it moved underneath you. The status-is-derived model makes this easy to bolt on, since the event array length *is* a version. |
+| **Deriving status costs a read.** Every response walks the event array to compute `status` and `approverId` — twice per record on the list endpoint. | Four to twenty records per page. The cost is invisible at this size, and correctness-by-construction is worth more than the cycles. | At scale, denormalize a `status` column and keep the event log as the audit trail — write both in one transaction. That's the first thing that stops paying for itself. |
+| **Save and submit are two requests.** `POST /submit` takes no body, so values are persisted first. A failed submit therefore still persists the draft's newer values. | Deliberate (ADR §9). The draft *is* the user's work in progress — discarding what they typed because one conditional field was missing would be the worse failure. | The alternative is one `POST /submit` that accepts a body, which buys atomicity at the cost of two different ways to write the same fields. |
+| **Authentication is fake.** `X-User-Id` header, no session, no token, trivially spoofed. | Explicitly out of scope, and it occupies exactly the slot a JWT would. Authorization is *not* fake: every ownership and approver check runs server-side against `req.currentUser.id` and holds against a hostile `curl`. | Replace the body of `middleware/auth.ts`. Every guard downstream already reads `req.currentUser`, so nothing else moves. |
+
+---
+
+# What Was Tested
+
+The strategy is an inverted pyramid, lifted from ADR §10: nearly all the effort sits on server logic, a thin layer on the UI.
+
+| Tier | Tool | Target | What it pins |
+|---|---|---|---|
+| **Unit — highest value** | Jest | `requestValuesSchema` | each conditional rule fires and clears; negative amount; the $1,000 boundary at exactly 99999 / 100000; zero |
+| **Unit — highest value** | Jest | `pickApprover()` | under threshold → manager; at/over → finance; missing manager → finance; manager *is* requester → finance; finance is requester → throws |
+| **Unit** | Jest | `deriveStatus()` / `getApproverId()` | each event type; ordering; resubmit picks the later approver; empty history |
+| **Unit** | Jest | cents conversion | round-trip, `.5` cases, non-integer rejection |
+| **Integration** | Supertest | HTTP layer | create → PATCH → submit → approve, and create → submit → reject, asserting `events.length` grows at each step |
+| **Integration — security** | Supertest | direct API abuse | no header → 401; submit another user's draft → 403; approve as non-approver → 403; approve your own → 403; PATCH a Submitted request → 409; `status`/`requesterId`/`approverId` in the body silently ignored |
+| **Component** | Vitest + RTL | Form | each conditional field in both directions; server `fieldErrors` rendered inline; exactly one `POST /requests` across a failed-then-fixed submit |
+| **Component** | Vitest + RTL | List, Detail | derived statuses render; both permission gates in both directions; the decision paths; in-flight disable; the error banner |
+| **E2E** | Playwright | one flow | **not built** — ADR §10 marks it optional, and it was the first thing cut |
+
+**206 automated tests, all green:** 126 server (Jest + Supertest), 49 client (Vitest + RTL), 31 shared (Jest). `eslint`, `tsc --noEmit` on the server and `tsc -b` on the client all clean.
+
+**Deliberately not tested:** Express wiring beyond "is it mounted", Tailwind classes, and the store's get/set — a wrapper over a `Map` with no rule in it. `useApiQuery` has no unit test either: exercising abort-cleanup timing through `renderHook` would be more scaffolding than the behaviour is worth, and every component test that renders a list already drives the hook. Coverage percentage was never a goal.
+
+**Manual verification lives in `MANUAL_TEST_PLAN.md`** — twelve sections covering the list page, conditional visibility at the boundary, draft saves, submit validation, all nine approver-routing branches, the permission matrix, approve/reject and history, rapid user switching (the manual stand-in for the missing abort test), a hostile-`curl` sweep per guardrail, and a data-integrity pass. I walked it end to end; everything passed.
+
+---
+
+# What's Next
+
+- **S1 — search and filter on the list.** Status dropdown plus text search over description and type. Client-side filtering is fine at this scale and I'd say so rather than build an endpoint for it.
+- **S2 — reject and resubmit.** `POST /api/requests/:id/resubmit`, owner-only and `Rejected`-only, re-validating and **recomputing** the approver, since the amount may have changed on the way through. Today a rejected request is terminal.
+- **S3 — approval and rejection comments.** An optional `comment` on the decision, stored on the history event and rendered in the timeline — the rejection reason is the thing an owner most needs while fixing a request.
+- **A real datastore, and a denormalized status column.** The two go together: keep the event log as the audit trail, write a `status` column alongside it in the same transaction, and stop paying for derivation on every read. At four records it's free; at four hundred thousand it isn't.
+- **Real authentication.** `middleware/auth.ts` is already shaped like the place a JWT check would go.
+
+---
+
 # AI Usage & Planning Process
 
 I started by asking Claude to generate an Architecture Decision Record (ADR) and an Implementation Plan based on the task requirements and my tech stack. I reviewed and refined the ADR before accepting it. The Implementation Plan, derived from the ADR and requirements, serves as a tracking tool for both me and Claude throughout development.
@@ -50,16 +126,6 @@ Verified: npm install, npm test (1 passing), and npm run dev:server (curl'd loca
 One thing to note for later: the current eslint.config.js only sets globals.browser and pulls in React-specific plugins, so it's not really linting server/src correctly yet (no    
 Node globals). Worth adding a server/** override with globals.node and no React plugins when you're ready — didn't do it now since it wasn't asked for.
 ```
-# Design Choices
-
-**Data fetching** — one ~25-line `useApiQuery` hook for the three read
-  paths; writes are imperative `api.post` / `api.patch` calls in click
-  handlers, because each has call-site-specific in-flight state, success
-  behaviour, and error rendering — a generic mutation hook would only hide
-  those differences. `AbortController` in the effect cleanup prevents a stale
-  response landing after a user switch. No TanStack Query: caching and
-  revalidation buy nothing over four-to-twenty records fetched per page.
-
 # Defining Core Data Types
 I have defined the types manually with few small refinements from Claude and at the end I asked it to verify them against the ADR and Implementation plan.
 
@@ -319,7 +385,7 @@ Went through the rest of `:root` and its `@media (prefers-color-scheme: dark)` c
 Net result: `getComputedStyle(document.documentElement).fontSize` reads `16px` now, and the header's title/trigger-radius/trigger-padding measurements match `app-header.html`'s exactly (14px/600, 6px, 6px 10px) rather than off by a consistent 12.5%. Re-verified `tsc -b`, `eslint .`, and the full `npm test` (155 tests, unaffected — this was CSS-only) all still clean, plus a fresh Chrome tab confirming the live header now sits flush with the viewport edges and the JSON dump under it renders at normal body-text size instead of the old 56px `h1` leftover.
 
 Ticked Phase 10's last two checkboxes. Backend-and-shell is now fully done; Phase 11 (the real list page) replaces `RequestList`'s temporary `useApiQuery` wiring with an actual table next.
-# Phase 11 — the list page
+# The list page
 
 The first page that actually looks like the product. `RequestList` went from a `<pre>` dump of the JSON to a real table: ID, expense type, amount, status badge, requester, created date, plus a "New Request" button and the loading/error lines.
 
@@ -339,7 +405,7 @@ Verified the phase's own check — all four seed rows render with the right deri
 
 No seed request is ever in the `Rejected` state, so the red badge only gets exercised by the unit test, not by the live app. Something to keep in mind when demoing.
 
-# Phase 12 — request form, fields and conditional visibility only
+# Request form, fields and conditional visibility only
 
 Started Phase 12 narrowly on purpose: base fields, the three conditional-visibility rules, and nothing else — no Save Draft/Submit wiring, no client validation, no write endpoints. Those are separate checkboxes further down the same phase and are pure wiring; shipping two dead buttons ahead of them would have been worse than leaving the card end where it ends.
 
@@ -371,7 +437,7 @@ Seven tests in `RequestForm.test.tsx`, each conditional exercised in **both dire
 
 `npm test` sits at 178 (23 client / 155 across the other two workspaces), `eslint`, `tsc -b` on both workspaces, and prettier are all clean. Ticked the two Phase 12 checkboxes this covers — base fields and conditional visibility — and left the rest of the phase (write endpoints, submit behaviour, edit mode) unticked; wiring is next.
 
-## Phase 12 finished — writes, submit, and edit mode
+## Writes, submit, and edit mode
 
 Picked up the rest of Phase 12. The three selected checkboxes turned out to be inseparable from the two sections below them in the plan: "Save Draft and Submit" can't exist without the create-vs-edit endpoint branch deciding *where* a write goes, and that branch is the thing the whole submit sequence is built on. So this covers the amount conversion, both actions, edit mode, the write-endpoint branch, and all of ADR §9's submit behaviour in one go.
 
@@ -412,7 +478,7 @@ One deliberate non-fix: a conditional field that becomes hidden keeps whatever w
 
 `npm test` is at 185 (30 client / 127 server / 31 shared — 7 new submit-flow tests and 3 new money tests), with `eslint`, `tsc` on both workspaces, and prettier clean.
 
-# Phase 13 — detail page, history timeline, and the two decisions
+# Detail page, history timeline, and the two decisions
 
 The read-only counterpart to the form. Everything on it is a projection of what the API already returns: `toResponse()` hands back `status`, `approverId` and `requesterName` as derived fields, so the page never re-derives anything — it formats and gates.
 
@@ -438,6 +504,12 @@ One real mismatch, now fixed: description and extra justification were rendering
 Also confirmed the whole Verify line end to end: REQ-002 as Trent shows no buttons, switching to Carol in the header makes Approve/Reject appear in place with no navigation, approving flips the badge to Approved, drops the Assigned Approver field, removes the buttons, and grows the timeline by a third entry — `Approved by Carol`, with today's timestamp. The Edit button shows on REQ-001 for Alice and links to `/requests/REQ-001/edit`; it's absent on REQ-004, which is Mallory's draft.
 
 18 new component tests (`RequestDetail.test.tsx`), covering both gates in both directions, the decision paths, the in-flight disable, the banner, and the actor-name fallback. `npm test` is at 206 (48 client / 127 server / 31 shared); `eslint`, `tsc -b`, and prettier are clean.
+
+## Two cleanups after the phase closed
+
+Reconsidered the `refetch()` placement described above and moved it into `finally`, so a *failed* decision refetches too — a 409 there means the copy on screen is stale by definition, which is the case that needs the refresh most. That's the 19th detail test.
+
+Also deleted the `GET /` hello-world route from `server/src/index.ts` and its assertion. It was Phase 0 scaffolding — proof that `npm run dev:server` booted at all — and nothing in the client ever called it, so it was sitting in the app's public surface for no reason. The CORS test that had been piggybacking on it now checks the header on a real endpoint (`/api/users`) instead. Net effect on the count: client 48 → 49, server 127 → 126, still 206 total.
 
 # Manual Testing and Verification
 

@@ -516,7 +516,7 @@ mechanics sit *after* the gate that decides whether any call happens at all.
   data (the manual stand-in for a `useApiQuery` abort test; see the note at the
   end of this document)
 - [x] Remove `console.log`s; fix TypeScript errors; `npm test` fully green
-- [ ] Finish `NOTES.md`:
+- [x] Finish `NOTES.md`:
   - **Run instructions** — install + start for both apps
   - **Design choices** — routes/services/logic/store layering with no separate controller layer, and why; derived status; three pure functions; in-memory store as a swappable seam; allowlisted body fields; Declarative router; Context scoped to identity only
   - **Data fetching** — one ~25-line `useApiQuery` hook for the three read paths; writes are imperative `api.post` / `api.patch` calls in click handlers, because each has call-site-specific in-flight state, success behaviour, and error rendering. `AbortController` in the effect cleanup prevents a stale response landing after a user switch. No TanStack Query.
@@ -525,8 +525,9 @@ mechanics sit *after* the gate that decides whether any call happens at all.
   - **The two sentences worth having verbatim:**
     - *Client-side validation is a UX convenience only — deleting it entirely would leave the app fully correct, because the server returns the same `fieldErrors`.*
     - *Zod validates field shape and the three conditional rules; approver routing and status transitions are hand-written, per the no-workflow-engine constraint.*
-  - **What's next** — the stretch goals below, plus a real datastore and denormalized status column at scale
   - **AI usage** — what was AI-assisted, and at least one point where you disagreed with the AI and why
+  - **What's next** — the stretch goals below, plus a real datastore and denormalized status column at scale
+  
 
 **Commit:** `docs: NOTES.md and final cleanup`
 
