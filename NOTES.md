@@ -438,3 +438,13 @@ One real mismatch, now fixed: description and extra justification were rendering
 Also confirmed the whole Verify line end to end: REQ-002 as Trent shows no buttons, switching to Carol in the header makes Approve/Reject appear in place with no navigation, approving flips the badge to Approved, drops the Assigned Approver field, removes the buttons, and grows the timeline by a third entry — `Approved by Carol`, with today's timestamp. The Edit button shows on REQ-001 for Alice and links to `/requests/REQ-001/edit`; it's absent on REQ-004, which is Mallory's draft.
 
 18 new component tests (`RequestDetail.test.tsx`), covering both gates in both directions, the decision paths, the in-flight disable, the banner, and the actor-name fallback. `npm test` is at 206 (48 client / 127 server / 31 shared); `eslint`, `tsc -b`, and prettier are clean.
+
+# Manual Testing and Verification
+
+I have asked Claude Desktop app to create a manual testing plan based on the requirements. 
+
+This is not Claude Code instance, its Claude Desktop app. Claude Code may have more context of the app and be biased because of the unit tests.
+
+They all pass. Instead, I needed an independent manual verification plan, and that's why I asked the Desktop app.
+
+I walked through the plan and tested it manually. Everything has passed.

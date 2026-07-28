@@ -508,11 +508,11 @@ mechanics sit *after* the gate that decides whether any call happens at all.
 
 ## Phase 14 — Polish and NOTES.md
 
-- [ ] Manual walkthrough: create as Alice → submit → switch to Carol → approve
-- [ ] Try to break it in the UI: submit empty, submit billable with no client, approve your own request
-- [ ] Fail a submit from `/requests/new`, fix, resubmit — confirm only **one**
+- [x] Manual walkthrough: create as Alice → submit → switch to Carol → approve
+- [x] Try to break it in the UI: submit empty, submit billable with no client, approve your own request
+- [x] Fail a submit from `/requests/new`, fix, resubmit — confirm only **one**
   request was created
-- [ ] Switch users rapidly on the detail page — nothing flickers to the wrong
+- [x] Switch users rapidly on the detail page — nothing flickers to the wrong
   data (the manual stand-in for a `useApiQuery` abort test; see the note at the
   end of this document)
 - [x] Remove `console.log`s; fix TypeScript errors; `npm test` fully green
