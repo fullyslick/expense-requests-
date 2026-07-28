@@ -13,6 +13,13 @@ Two things happen at the end of each phase, and both are expected as part of the
 - Tick the phase's checkboxes in `IMPLEMENTATION_PLAN.md`.
 - Append a narrative section to `NOTES.md` covering what was built, decisions made, and anything that surprised you. `NOTES.md` is a graded deliverable, not an afterthought — it is written as the work happens, in the author's first-person voice.
 
+`NOTES.md` opens with four summary sections (Design Choices, Tradeoffs, What Was Tested,
+What's Next) before the chronological journal starts — keep new narrative in the journal
+and only touch the summaries when a decision or a test count actually changes.
+`MANUAL_TEST_PLAN.md` is the manual counterpart to the automated suite: twelve sections
+including a hostile-`curl` sweep with one case per guardrail. Update it when behaviour it
+asserts changes.
+
 ## Commands
 
 ```bash
@@ -25,14 +32,25 @@ npm run format         # prettier --write, whole repo
                        # ⚠️  only run when intentionally formatting — will modify all unformatted files
 ```
 
+`prettier --check` already fails on files nobody has touched in a while (`api/client.ts`,
+`api/useApiQuery.ts`, `api/client.test.ts`, `NOTES.md`, `IMPLEMENTATION_PLAN.md`). A
+failure there isn't necessarily from your change — check `git diff` before reformatting,
+because a repo-wide `npm run format` buries a small change under hundreds of lines.
+
 Per-workspace and single tests:
 
 ```bash
-npm test --workspace=server                          # Jest
-npx jest submitRequest --rootDir server              # one server test file by name pattern
-npx jest -t 'routes to the manager' --rootDir server # one test case by name
-npm test --workspace=client                          # Vitest
+npm test --workspace=server                    # Jest
+npm test --workspace=client                    # Vitest
+npm test --workspace=client -- RequestDetail   # one client test file by name pattern
+
+cd server && npx jest submitRequest            # one server test file by name pattern
+cd server && npx jest -t 'falls back to finance'  # one server test case by name
 ```
+
+Run Jest from inside `server/`, not from the root with `--rootDir server` — that flag
+skips `server/jest.config.js`, so ts-jest never loads and every `.ts` test dies on the
+first `import`.
 
 Type-checking is not part of `npm test` — run it separately when touching types:
 
@@ -41,7 +59,11 @@ cd server && npx tsc --noEmit
 cd client && npx tsc -b
 ```
 
-The client has no test files yet; its Vitest config sets `passWithNoTests` so the root `npm test` stays green until Phase 12/13 add component tests.
+Client tests are Vitest + React Testing Library — one convention they all follow, plus two jsdom traps that cost real time to rediscover:
+
+- **Page tests stub `@/api/useApiQuery`, not `fetch`.** A page's contract is "given this data, render this"; `api/client.test.ts` already covers the fetch layer against a stubbed `global.fetch`.
+- **`setupTests.ts` is load-bearing.** It registers `afterEach(cleanup)` explicitly — RTL only self-registers that under `globals: true`, and this project imports `describe`/`it`/`expect` by hand — and polyfills `PointerEvent` plus `hasPointerCapture`/`scrollIntoView`/`ResizeObserver`, which every Base UI primitive needs in jsdom.
+- **Base UI Select commits on a full pointer sequence.** `fireEvent.click(option)` alone opens the popup and silently leaves the value unchanged; fire `pointerDown` → `pointerUp` → `click`. The Checkbox renders two elements sharing one accessible name, so query it by role, not `getByLabelText`.
 
 ## Architecture
 
@@ -98,31 +120,45 @@ Vite + React + TypeScript, Tailwind v4 (no config file — `@tailwindcss/vite` p
 
 Do not run `shadcn add form`, and do not add `react-hook-form`. Conditional field visibility and validation are hand-wired from local state.
 
+Four routes. **`/requests/:id` is the read-only detail page and `/requests/:id/edit` is
+the form** — IMPLEMENTATION_PLAN.md Phase 12 says edit mode lives at `/requests/:id`,
+but Phase 10 had already given that URL to the detail page and both can't own it. The
+ADR's actual requirement is that the form holds an id before `/submit` runs, so a
+retry PATCHes instead of creating an orphan draft; which path spells that id is
+incidental. Don't "fix" this back to match the plan's literal text.
+
 The `@/*` alias maps to `client/src/*` and must stay declared in **both** `client/tsconfig.json` and `client/tsconfig.app.json` — the shadcn CLI only reads the top-level one, and writes files into a literal `@/` folder if it's missing there.
 
 ## Design validation
 
-Mockups are served alongside the client dev server at:
+Mockups live in `client/public/design-mockups/` and are served by the client dev
+server (`npm run dev:client` first) — there is no top-level `/design` directory:
+
 http://localhost:5173/design-mockups/list-page.html
 http://localhost:5173/design-mockups/request-form.html
 http://localhost:5173/design-mockups/detail-page-and-history.html
 http://localhost:5173/design-mockups/app-header.html
-(copied from /design/mockups — run `npm run dev:client` first).
-After finishing each frontend page (Phase 11–13 in
-IMPLEMENTATION_PLAN.md), do a validation pass using Chrome (run `/chrome`
+
+After changing any frontend page, do a validation pass using Chrome (run `/chrome`
 first if not already connected):
 
 1. Open the live route (e.g. localhost:5173/requests) in a tab.
-2. Open the matching file:///.../design/mockups/*.html in another tab.
+2. Open the matching mockup URL above in another tab.
 3. Compare: status badge colors, table column order, spacing/hierarchy,
    button placement, error state rendering.
 4. For request-form.html specifically: click the "Billable" checkbox and
    change "Expense type" to "Other" in the LIVE app, and confirm the
    conditional fields appear/disappear as they do in the mockup's demo.
 
+The mockups are self-extracting JS bundles, so their markup is not readable with
+`Read` and hidden conditional fields don't screenshot. To read one's real labels
+and styles, pull the `__bundler/template` script tag out of the HTML and
+`JSON.parse` it.
+
 Report deviations, don't silently "fix" them against the mockup.
 
-**If the mockup and requirements.md/ADR.md disagree, the spec wins.**
+**If the mockup and the spec (`.claude/docs/requirments.md`, note the spelling) or
+`ADR.md` disagree, the spec wins.**
 Known case: ADR §9 says Submit is disabled only while in-flight, never for
 invalidity — don't match the mockup if it shows otherwise.
 
