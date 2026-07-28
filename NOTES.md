@@ -69,9 +69,10 @@ The strategy is an inverted pyramid, lifted from ADR §10: nearly all the effort
 | **Integration — security** | Supertest | direct API abuse | no header → 401; submit another user's draft → 403; approve as non-approver → 403; approve your own → 403; PATCH a Submitted request → 409; `status`/`requesterId`/`approverId` in the body silently ignored |
 | **Component** | Vitest + RTL | Form | each conditional field in both directions; server `fieldErrors` rendered inline; exactly one `POST /requests` across a failed-then-fixed submit |
 | **Component** | Vitest + RTL | List, Detail | derived statuses render; both permission gates in both directions; the decision paths; in-flight disable; the error banner |
+| **Structural** | Jest | layering (guardrail #11) | `routes/` imports neither the store nor `logic/`; `logic/` imports neither Express nor the store; no service imports Express |
 | **E2E** | Playwright | one flow | **not built** — ADR §10 marks it optional, and it was the first thing cut |
 
-**206 automated tests, all green:** 126 server (Jest + Supertest), 49 client (Vitest + RTL), 31 shared (Jest). `eslint`, `tsc --noEmit` on the server and `tsc -b` on the client all clean.
+**209 automated tests, all green:** 129 server (Jest + Supertest), 49 client (Vitest + RTL), 31 shared (Jest). `eslint`, `tsc --noEmit` on the server and `tsc -b` on the client all clean.
 
 **Deliberately not tested:** Express wiring beyond "is it mounted", Tailwind classes, and the store's get/set — a wrapper over a `Map` with no rule in it. `useApiQuery` has no unit test either: exercising abort-cleanup timing through `renderHook` would be more scaffolding than the behaviour is worth, and every component test that renders a list already drives the hook. Coverage percentage was never a goal.
 
@@ -509,7 +510,7 @@ Also confirmed the whole Verify line end to end: REQ-002 as Trent shows no butto
 
 Reconsidered the `refetch()` placement described above and moved it into `finally`, so a *failed* decision refetches too — a 409 there means the copy on screen is stale by definition, which is the case that needs the refresh most. That's the 19th detail test.
 
-Also deleted the `GET /` hello-world route from `server/src/index.ts` and its assertion. It was Phase 0 scaffolding — proof that `npm run dev:server` booted at all — and nothing in the client ever called it, so it was sitting in the app's public surface for no reason. The CORS test that had been piggybacking on it now checks the header on a real endpoint (`/api/users`) instead. Net effect on the count: client 48 → 49, server 127 → 126, still 206 total.
+Also deleted the `GET /` hello-world route from `server/src/index.ts` and its assertion. It was Phase 0 scaffolding — proof that `npm run dev:server` booted at all — and nothing in the client ever called it, so it was sitting in the app's public surface for no reason. The CORS test that had been piggybacking on it now checks the header on a real endpoint (`/api/users`) instead. Between the two cleanups the count came out a wash — client 48 → 49, server 127 → 126 — which is why the total sat at 206 until the layering test below moved it.
 
 # Manual Testing and Verification
 
@@ -520,3 +521,17 @@ This is not Claude Code instance, its Claude Desktop app. Claude Code may have m
 They all pass. Instead, I needed an independent manual verification plan, and that's why I asked the Desktop app.
 
 I walked through the plan and tested it manually. Everything has passed.
+
+# The guardrail that had no test
+
+Going through the definition-of-done list at the end, one item didn't survive contact: *"every guardrail above has at least one test asserting it."* Guardrails 1–8 were all covered somewhere, and #9/#10 (no form builder, no database) are the kind of thing you verify by grepping `package.json` rather than by writing a test. But **#11, one-directional layering, had no test at all — and had already been violated.**
+
+`routes/users.ts` imported `listUsers` straight from `../store`, so a route was reaching past the service layer into storage. It's the oldest route in the app, written in Phase 4 as the deliberately-simplest thing that could prove auth and routing were wired up, and it never got revisited once `routes/requests.ts` established the real pattern. Every other route goes through a service; this one quietly didn't. Nothing caught it because "enforced by convention" means "enforced by whoever is looking."
+
+Fixed by adding `services/users.service.ts`. It's a one-line pass-through to `store.listUsers()` today, which looks like ceremony — but the guardrail isn't really about this function, it's about the direction of the arrows staying true, and the moment there's a rule about who may list users it has one obvious place to live.
+
+Then wrote `layering.test.ts` so the convention stops depending on vigilance: it reads the imports out of `routes/`, `logic/`, and `services/` and asserts that routes touch neither the store nor `logic/`, that `logic/` imports neither Express nor the store, and that no service imports Express. Parsing imports with a regex is crude, and I'd normally push back on a test that reads source files — but it's the only kind of test that fails when *layering* breaks, as opposed to when behaviour breaks. Behaviour was fine the whole time the violation existed; that's exactly the problem.
+
+Checked it the same way as the conditional-visibility tests: put the bad import back and confirmed the suite went red, pointing at `routes/users.ts` specifically, with the other two assertions still green. A structural test that can't fail is worse than no test, because it reads like coverage.
+
+`npm test` is at 209 (49 client / 129 server / 31 shared).

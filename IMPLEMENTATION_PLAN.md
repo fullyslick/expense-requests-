@@ -560,12 +560,15 @@ mechanics sit *after* the gate that decides whether any call happens at all.
 
 ## Definition of done
 
-- [ ] `npm test` green from the root
-- [ ] Every guardrail above has at least one test asserting it
-- [ ] A hostile `curl` cannot submit another user's draft, approve a request it isn't assigned, or set `status` / `requesterId` / `approverId`
-- [ ] The full lifecycle works end-to-end in the browser with user switching
-- [ ] `NOTES.md` answers: how to run, what you chose, what you traded away, what you tested, what's next, how AI was used
-- [ ] Commit history shows incremental work, not one squashed commit
+- [x] `npm test` green from the root
+- [x] Every guardrail above has at least one test asserting it
+  - #11 is now pinned by `layering.test.ts`, which reads the imports in `routes/`,
+    `logic/`, and `services/`. #9/#10 are structural (no form builder, no database)
+    and hold by dependency absence rather than by a test.
+- [x] A hostile `curl` cannot submit another user's draft, approve a request it isn't assigned, or set `status` / `requesterId` / `approverId`
+- [x] The full lifecycle works end-to-end in the browser with user switching
+- [x] `NOTES.md` answers: how to run, what you chose, what you traded away, what you tested, what's next, how AI was used
+- [x] Commit history shows incremental work, not one squashed commit
 
 ---
 
